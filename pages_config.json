@@ -2,12 +2,32 @@
   "_huong_dan": "Mỗi page là 1 object. 'url' nên dùng dạng mbasic.facebook.com/<username_hoặc_id> vì nhẹ và ít cần JS hơn. Thêm bao nhiêu page tùy bạn.",
   "pages": [
     {
-      "name": "Đoàn trường (ví dụ - sửa lại url thật)",
-      "url": "https://mbasic.facebook.com/doantruong.example"
+      "name": "Đoàn Hội Tài Chính",
+      "url": "https://mbasic.facebook.com/doanhoitaichinh"
     },
     {
-      "name": "Khoa CNTT (ví dụ - sửa lại url thật)",
-      "url": "https://mbasic.facebook.com/khoacntt.example"
+      "name": "CLB Kế Toán - Kiểm toán A2C",
+      "url": "https://mbasic.facebook.com/CLBA2C"
+    },
+    {
+      "name": "Khoa Tài Chính UEH",
+      "url": "https://mbasic.facebook.com/sof.edu.vn"
+    },
+    {
+      "name": "SFR - Nhóm sinh viên nghiên cứu tài chính",
+      "url": "https://mbasic.facebook.com/NhomSFR.ueh"
+    },
+    {
+      "name": "CLB Chứng Khoán SCUE",
+      "url": "https://mbasic.facebook.com/clbscue"
+    },
+    {
+      "name": "CLBBatdongsanREC",
+      "url": "https://mbasic.facebook.com/CLBBatdongsanRECUEH"
+    },
+    {
+      "name": "Tuấn Tú Khôi Ngô",
+      "url": "https://mbasic.facebook.com/profile.php?id=100089346318168"
     }
   ],
   "keywords": [
