@@ -1,0 +1,24 @@
+{
+  "_huong_dan": "Mỗi page là 1 object. 'url' nên dùng dạng mbasic.facebook.com/<username_hoặc_id> vì nhẹ và ít cần JS hơn. Thêm bao nhiêu page tùy bạn.",
+  "pages": [
+    {
+      "name": "Đoàn trường (ví dụ - sửa lại url thật)",
+      "url": "https://mbasic.facebook.com/doantruong.example"
+    },
+    {
+      "name": "Khoa CNTT (ví dụ - sửa lại url thật)",
+      "url": "https://mbasic.facebook.com/khoacntt.example"
+    }
+  ],
+  "keywords": [
+    "mssv",
+    "điểm rèn luyện",
+    "diem ren luyen",
+    "cập nhật mssv",
+    "cap nhat mssv",
+    "cập nhật mã số sinh viên",
+    "form điểm rèn luyện",
+    "đăng ký điểm rèn luyện",
+    "minh chứng điểm rèn luyện"
+  ]
+}
