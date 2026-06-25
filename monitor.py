@@ -40,10 +40,6 @@ FACEBOOK_BLOCK_PATTERNS = [
     "unsupported browser",
     "browser not supported",
     "update your browser",
-    "log in to facebook",
-    "dang nhap facebook",
-    "ban phai dang nhap",
-    "you must log in",
 ]
 
 FACEBOOK_UI_SKIP_PATTERNS = [
