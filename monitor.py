@@ -166,42 +166,48 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
                 continue;
             }
 
-            // Lấy text thô của article
-            let fullText = article.innerText || '';
-            
-            // Xóa các chữ "Facebook" lặp lại do SVG/icon sinh ra
-            fullText = fullText.replace(/^(Facebook\\s*)+/gi, '').trim();
-            if (fullText.includes('Facebook Facebook Facebook')) {
-                // Nếu vẫn còn rác, thử tìm đích danh thẻ message
-                const msgNode = article.querySelector('div[data-ad-preview="message"], div[dir="auto"]');
-                if (msgNode) fullText = msgNode.innerText || fullText;
+            // Ưu tiên lấy text sạch từ phần thân bài viết (bỏ qua header bị mã hóa chống bot)
+            let postText = '';
+            let bodyText = '';
+            const dirAutoDivs = article.querySelectorAll('div[dir="auto"]');
+            for (const div of dirAutoDivs) {
+                const txt = (div.innerText || '').trim();
+                // Bỏ qua tên tác giả và rác thời gian (thường ngắn)
+                if (txt.length > 25) {
+                    bodyText += txt + '\\n';
+                }
             }
 
-            // Tìm điểm cắt: khu vực nút Thích/Bình luận/Chia sẻ
-            // Đây là ranh giới tự nhiên giữa nội dung bài viết và phần comment
-            const cutStrings = [
-                'Thích\\nBình luận',
-                'Like\\nComment',
-                'Thích\\nComment',
-                'Tất cả bình luận',
-                'All comments',
-                'Phù hợp nhất',
-                'Mới nhất\\n',
-                ' lượt thích\\n',
-                ' bình luận\\n',
-                ' likes\\n',
-                ' comments\\n',
-                'Thích\\nTrả lời',
-                'Like\\nReply'
-            ];
+            if (bodyText.length > 10) {
+                postText = bodyText;
+            }
 
-            let postText = fullText;
-            for (const cutStr of cutStrings) {
-                const idx = fullText.indexOf(cutStr);
-                if (idx > 10) {
-                    postText = fullText.substring(0, idx);
-                    break;
+            // Nếu không tìm thấy văn bản dài (có thể post chỉ chứa ảnh/caption ngắn)
+            if (!postText || postText.length < 10) {
+                let fullText = article.innerText || '';
+                const cutStrings = [
+                    'Thích\\nBình luận',
+                    'Like\\nComment',
+                    'Thích\\nComment',
+                    'Tất cả bình luận',
+                    'All comments',
+                    'Phù hợp nhất',
+                    'Mới nhất\\n',
+                    ' lượt thích\\n',
+                    ' bình luận\\n',
+                    ' likes\\n',
+                    ' comments\\n',
+                    'Thích\\nTrả lời',
+                    'Like\\nReply'
+                ];
+                for (const cutStr of cutStrings) {
+                    const idx = fullText.indexOf(cutStr);
+                    if (idx > 10) {
+                        fullText = fullText.substring(0, idx);
+                        break;
+                    }
                 }
+                postText = fullText;
             }
 
             postText = postText.trim();
@@ -239,7 +245,7 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
     posts = []
     for item in raw_posts[:max_posts]:
         text = re.sub(r"\s+", " ", item["text"]).strip()
-        post_id = text[:120]
+        post_id = text[:300]
         link = item["link"] or page_url
         posts.append({"id": post_id, "text": text, "link": link})
 
