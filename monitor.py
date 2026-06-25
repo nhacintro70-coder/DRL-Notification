@@ -164,19 +164,19 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
             // Tìm điểm cắt: khu vực nút Thích/Bình luận/Chia sẻ
             // Đây là ranh giới tự nhiên giữa nội dung bài viết và phần comment
             const cutStrings = [
-                'Th\u00edch\nB\u00ecnh lu\u1eadn',
-                'Like\nComment',
-                'Th\u00edch\nComment',
-                'T\u1ea5t c\u1ea3 b\u00ecnh lu\u1eadn',
+                'Thích\\nBình luận',
+                'Like\\nComment',
+                'Thích\\nComment',
+                'Tất cả bình luận',
                 'All comments',
-                'Ph\u00f9 h\u1ee3p nh\u1ea5t',
-                'M\u1edbi nh\u1ea5t\n',
-                ' l\u01b0\u1ee3t th\u00edch\n',
-                ' b\u00ecnh lu\u1eadn\n',
-                ' likes\n',
-                ' comments\n',
-                'Th\u00edch\nTr\u1ea3 l\u1eddi',
-                'Like\nReply'
+                'Phù hợp nhất',
+                'Mới nhất\\n',
+                ' lượt thích\\n',
+                ' bình luận\\n',
+                ' likes\\n',
+                ' comments\\n',
+                'Thích\\nTrả lời',
+                'Like\\nReply'
             ];
 
             let postText = fullText;
