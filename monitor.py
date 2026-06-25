@@ -118,10 +118,11 @@ def parse_cookie_string(cookie_str: str) -> list[dict]:
 # Lấy bài viết bằng Playwright
 # ---------------------------------------------------------------------------
 
-def fetch_posts_playwright(page_obj, page_url: str) -> list[dict]:
+def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[dict]:
     """
     Dùng Playwright page object để mở 1 URL Facebook,
-    đợi JS render, và trích xuất bài viết.
+    đợi JS render, cuộn trang để load thêm bài,
+    và trích xuất tối đa max_posts bài viết (chỉ lấy nội dung bài, bỏ comment).
     Trả về list dict {id, text, link}.
     """
     try:
@@ -134,51 +135,71 @@ def fetch_posts_playwright(page_obj, page_url: str) -> list[dict]:
     try:
         page_obj.wait_for_selector('div[role="article"]', timeout=15000)
     except Exception:
-        # Có thể trang không có bài viết hoặc bị chặn
         pass
 
-    # Cuộn xuống một chút để load thêm bài viết
-    try:
-        page_obj.evaluate("window.scrollBy(0, 1500)")
-        page_obj.wait_for_timeout(2000)
-    except Exception:
-        pass
+    # Cuộn xuống nhiều lần để load thêm bài viết
+    for i in range(4):
+        try:
+            page_obj.evaluate("window.scrollBy(0, 1200)")
+            page_obj.wait_for_timeout(1500)
+        except Exception:
+            break
 
-    # Trích xuất bài viết
-    posts = []
-    articles = page_obj.query_selector_all('div[role="article"]')
+    # Trích xuất bài viết bằng JavaScript:
+    # - Chỉ lấy top-level article (bài viết gốc), bỏ qua article lồng bên trong (comment)
+    # - Với mỗi bài, chỉ lấy text của bài viết, loại bỏ text từ các comment con
+    raw_posts = page_obj.evaluate("""
+    () => {
+        const allArticles = document.querySelectorAll('div[role="article"]');
+        const results = [];
 
-    if not articles:
-        # Debug: in ra title và nội dung trang khi không tìm thấy bài viết
+        for (const article of allArticles) {
+            // Bỏ qua nếu article này nằm lồng bên trong 1 article khác (= comment)
+            const parentArticle = article.parentElement?.closest('div[role="article"]');
+            if (parentArticle) continue;
+
+            // Lấy text của bài viết, loại bỏ text từ các comment con
+            const clone = article.cloneNode(true);
+            // Xóa tất cả article con (comment) khỏi bản clone
+            clone.querySelectorAll('div[role="article"]').forEach(el => el.remove());
+            const text = clone.innerText.trim();
+
+            if (!text || text.length < 10) continue;
+
+            // Tìm link bài viết
+            let link = '';
+            const anchors = article.querySelectorAll('a[href]');
+            for (const a of anchors) {
+                const href = a.getAttribute('href') || '';
+                if (href.includes('/posts/') || href.includes('/permalink/') ||
+                    href.includes('story_fbid=') || href.includes('/photos/') ||
+                    href.includes('/videos/')) {
+                    link = href.startsWith('/') ? 'https://www.facebook.com' + href : href;
+                    link = link.split('?')[0];
+                    break;
+                }
+            }
+
+            results.push({ text: text, link: link });
+        }
+        return results;
+    }
+    """)
+
+    if not raw_posts:
         title = page_obj.title()
         body_text = page_obj.inner_text("body")[:500] if page_obj.query_selector("body") else ""
         print(f"[DEBUG] Không tìm thấy bài viết. Title: '{title}'")
         print(f"[DEBUG] Nội dung trang: {body_text}")
         return []
 
-    for article in articles:
-        try:
-            text = article.inner_text()
-            text = re.sub(r"\s+", " ", text).strip()
-            if not text or len(text) < 10:
-                continue
-
-            # Tìm link bài viết (thường nằm trong thẻ <a> có href chứa /posts/ hoặc /permalink/)
-            link = page_url  # fallback
-            link_els = article.query_selector_all("a[href]")
-            for a in link_els:
-                href = a.get_attribute("href") or ""
-                if any(pattern in href for pattern in ["/posts/", "/permalink/", "story_fbid=", "/photos/", "/videos/"]):
-                    if href.startswith("/"):
-                        href = "https://www.facebook.com" + href
-                    link = href.split("?")[0]  # bỏ query params rác
-                    break
-
-            post_id = text[:120]
-            posts.append({"id": post_id, "text": text, "link": link})
-        except Exception as e:
-            print(f"[CẢNH BÁO] Lỗi khi xử lý 1 bài viết: {e}")
-            continue
+    # Giới hạn tối đa max_posts bài
+    posts = []
+    for item in raw_posts[:max_posts]:
+        text = re.sub(r"\s+", " ", item["text"]).strip()
+        post_id = text[:120]
+        link = item["link"] or page_url
+        posts.append({"id": post_id, "text": text, "link": link})
 
     return posts
 
