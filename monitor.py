@@ -133,7 +133,7 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
 
     # Đợi bài viết render (tối đa 15 giây)
     try:
-        page_obj.wait_for_selector('div[role="article"], div[aria-posinset], div[data-pagelet^="FeedUnit"]', timeout=15000)
+        page_obj.wait_for_selector('div[aria-posinset], div[role="article"]', timeout=15000)
     except Exception:
         pass
 
@@ -150,7 +150,7 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
     # - Chỉ lấy nội dung bài viết trước khu vực nút Thích/Bình luận/Chia sẻ (ranh giới tự nhiên)
     raw_posts = page_obj.evaluate("""
     () => {
-        const selector = 'div[role="article"], div[aria-posinset], div[data-pagelet^="FeedUnit"]';
+        const selector = 'div[aria-posinset], div[role="article"]';
         const allArticles = document.querySelectorAll(selector);
         const results = [];
 
@@ -159,18 +159,23 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
             const parentArticle = article.parentElement?.closest(selector);
             if (parentArticle) continue;
 
-
             // Bỏ qua nếu article này là một comment (dựa trên aria-label)
-            // LƯU Ý: Phải dùng startsWith thay vì includes. 
-            // Vì bài viết chính có thể có aria-label="... Thích, Bình luận, Chia sẻ", nếu dùng includes sẽ loại bỏ luôn bài viết!
             const ariaLabel = (article.getAttribute('aria-label') || '').trim().toLowerCase();
             if (ariaLabel.startsWith('comment') || ariaLabel.startsWith('bình luận') || 
                 ariaLabel.startsWith('reply') || ariaLabel.startsWith('trả lời')) {
                 continue;
             }
 
-            // Lấy toàn bộ text thô của article
-            const fullText = article.innerText || '';
+            // Lấy text thô của article
+            let fullText = article.innerText || '';
+            
+            // Xóa các chữ "Facebook" lặp lại do SVG/icon sinh ra
+            fullText = fullText.replace(/^(Facebook\\s*)+/gi, '').trim();
+            if (fullText.includes('Facebook Facebook Facebook')) {
+                // Nếu vẫn còn rác, thử tìm đích danh thẻ message
+                const msgNode = article.querySelector('div[data-ad-preview="message"], div[dir="auto"]');
+                if (msgNode) fullText = msgNode.innerText || fullText;
+            }
 
             // Tìm điểm cắt: khu vực nút Thích/Bình luận/Chia sẻ
             // Đây là ranh giới tự nhiên giữa nội dung bài viết và phần comment
