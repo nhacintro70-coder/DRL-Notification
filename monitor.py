@@ -137,13 +137,24 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
     except Exception:
         pass
 
-    # Cuộn xuống nhiều lần để load thêm bài viết
-    for i in range(4):
-        try:
-            page_obj.evaluate("window.scrollBy(0, 1200)")
-            page_obj.wait_for_timeout(1500)
-        except Exception:
-            break
+    # Cuộn xuống vài lần để tải đủ bài viết
+    for _ in range(3):
+        page_obj.evaluate("window.scrollBy(0, 1200)")
+        page_obj.wait_for_timeout(2000)
+
+    # Tự động tìm và bấm tất cả các nút "Xem thêm" / "See more" để bung nội dung
+    page_obj.evaluate("""
+        () => {
+            const buttons = document.querySelectorAll('div[role="button"]');
+            for (const btn of buttons) {
+                const txt = (btn.innerText || '').trim();
+                if (txt.includes('Xem thêm') || txt.includes('See more')) {
+                    btn.click();
+                }
+            }
+        }
+    """)
+    page_obj.wait_for_timeout(2000) # Chờ DOM bung đầy đủ nội dung
 
     # Trích xuất bài viết bằng JavaScript:
     # - Chỉ lấy top-level article (bài viết gốc), bỏ qua article lồng bên trong (comment)
