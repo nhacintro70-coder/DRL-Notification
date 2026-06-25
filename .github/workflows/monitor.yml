@@ -2,13 +2,11 @@ name: Theo dõi điểm rèn luyện
 
 on:
   schedule:
-    # Chạy mỗi 20 phút. Cú pháp cron là UTC.
-    # Lưu ý: GitHub có thể delay vài phút vào giờ cao điểm, không đảm bảo chính xác tuyệt đối.
     - cron: "*/20 * * * *"
-  workflow_dispatch: {}  # cho phép bấm "Run workflow" để chạy thử thủ công
+  workflow_dispatch: {}
 
 permissions:
-  contents: write  # cần quyền này để commit lại file trạng thái
+  contents: write
 
 jobs:
   check:
@@ -22,8 +20,10 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Cài thư viện
-        run: pip install -r requirements.txt
+      - name: Cài thư viện + Playwright
+        run: |
+          pip install -r requirements.txt
+          playwright install chromium --with-deps
 
       - name: Chạy script kiểm tra
         env:
@@ -32,7 +32,7 @@ jobs:
           FB_COOKIE: ${{ secrets.FB_COOKIE }}
         run: python monitor.py
 
-      - name: Commit lại trạng thái (seen_posts.json, matched_posts.json)
+      - name: Commit lại trạng thái
         run: |
           git config user.name "diem-ren-luyen-bot"
           git config user.email "bot@users.noreply.github.com"
