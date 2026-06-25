@@ -109,6 +109,11 @@ def fetch_posts(page_url: str):
         post_id = re.sub(r"\s+", " ", text)[:120]  # dùng đoạn text đầu làm id tạm
         posts.append({"id": post_id, "text": text, "link": link})
 
+    if not posts:
+        print(f"[DEBUG] Không tìm thấy bài viết. Title của trang: '{soup.title.string if soup.title else 'None'}'")
+        # In ra 500 ký tự text đầu tiên trên trang để xem có phải bị chặn / login không
+        print(f"[DEBUG] Nội dung trang: {soup.get_text(separator=' ', strip=True)[:500]}")
+
     return posts
 
 
