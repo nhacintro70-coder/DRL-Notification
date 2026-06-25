@@ -159,10 +159,11 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
             if (parentArticle) continue;
 
             // Bỏ qua nếu article này là một comment (dựa trên aria-label)
-            // Facebook giao diện mới thường để comment dưới dạng div[role="article"] ngang hàng với post
-            const ariaLabel = (article.getAttribute('aria-label') || '').toLowerCase();
-            if (ariaLabel.includes('comment') || ariaLabel.includes('bình luận') || 
-                ariaLabel.includes('reply') || ariaLabel.includes('trả lời')) {
+            // LƯU Ý: Phải dùng startsWith thay vì includes. 
+            // Vì bài viết chính có thể có aria-label="... Thích, Bình luận, Chia sẻ", nếu dùng includes sẽ loại bỏ luôn bài viết!
+            const ariaLabel = (article.getAttribute('aria-label') || '').trim().toLowerCase();
+            if (ariaLabel.startsWith('comment') || ariaLabel.startsWith('bình luận') || 
+                ariaLabel.startsWith('reply') || ariaLabel.startsWith('trả lời')) {
                 continue;
             }
 
