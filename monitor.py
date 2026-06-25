@@ -147,7 +147,7 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
 
     # Trích xuất bài viết bằng JavaScript:
     # - Chỉ lấy top-level article (bài viết gốc), bỏ qua article lồng bên trong (comment)
-    # - Với mỗi bài, chỉ lấy text của bài viết, loại bỏ text từ các comment con
+    # - Chỉ lấy nội dung bài viết trước khu vực nút Thích/Bình luận/Chia sẻ (ranh giới tự nhiên)
     raw_posts = page_obj.evaluate("""
     () => {
         const allArticles = document.querySelectorAll('div[role="article"]');
@@ -158,13 +158,38 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
             const parentArticle = article.parentElement?.closest('div[role="article"]');
             if (parentArticle) continue;
 
-            // Lấy text của bài viết, loại bỏ text từ các comment con
-            const clone = article.cloneNode(true);
-            // Xóa tất cả article con (comment) khỏi bản clone
-            clone.querySelectorAll('div[role="article"]').forEach(el => el.remove());
-            const text = clone.innerText.trim();
+            // Lấy toàn bộ text thô của article
+            const fullText = article.innerText || '';
 
-            if (!text || text.length < 10) continue;
+            // Tìm điểm cắt: khu vực nút Thích/Bình luận/Chia sẻ
+            // Đây là ranh giới tự nhiên giữa nội dung bài viết và phần comment
+            const cutPatterns = [
+                /\\nThích\\nBình luận/,
+                /\\nLike\\nComment/,
+                /\\nThích\\nComment/,
+                /\\n[0-9.,KMk]+ lượt thích/,
+                /\\n[0-9.,KMk]+ bình luận/,
+                /\\n[0-9.,KMk]+ likes/i,
+                /\\nAll comments/,
+                /\\nTất cả bình luận/,
+                /\\nPhù hợp nhất/,
+                /\\nMới nhất/
+            ];
+
+            let postText = fullText;
+            for (const pattern of cutPatterns) {
+                const match = fullText.match(pattern);
+                if (match && match.index > 0) {
+                    // Chỉ cắt nếu vị trí tìm thấy nằm ở phần giữa bài trở đi
+                    if (match.index < postText.length) {
+                        postText = fullText.substring(0, match.index);
+                    }
+                    break;
+                }
+            }
+
+            postText = postText.trim();
+            if (!postText || postText.length < 10) continue;
 
             // Tìm link bài viết
             let link = '';
@@ -180,7 +205,7 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
                 }
             }
 
-            results.push({ text: text, link: link });
+            results.push({ text: postText, link: link });
         }
         return results;
     }
