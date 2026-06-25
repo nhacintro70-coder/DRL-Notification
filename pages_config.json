@@ -1,33 +1,33 @@
 {
-  "_huong_dan": "Mỗi page là 1 object. 'url' nên dùng dạng mbasic.facebook.com/<username_hoặc_id> vì nhẹ và ít cần JS hơn. Thêm bao nhiêu page tùy bạn.",
+  "_huong_dan": "Mỗi page là 1 object. 'url' dùng dạng www.facebook.com/<username_hoặc_id> để Playwright render JS đầy đủ. Thêm bao nhiêu page tùy bạn.",
   "pages": [
     {
       "name": "Đoàn Hội Tài Chính",
-      "url": "https://mbasic.facebook.com/doanhoitaichinh"
+      "url": "https://www.facebook.com/doanhoitaichinh"
     },
     {
       "name": "CLB Kế Toán - Kiểm toán A2C",
-      "url": "https://mbasic.facebook.com/CLBA2C"
+      "url": "https://www.facebook.com/CLBA2C"
     },
     {
       "name": "Khoa Tài Chính UEH",
-      "url": "https://mbasic.facebook.com/sof.edu.vn"
+      "url": "https://www.facebook.com/sof.edu.vn"
     },
     {
       "name": "SFR - Nhóm sinh viên nghiên cứu tài chính",
-      "url": "https://mbasic.facebook.com/NhomSFR.ueh"
+      "url": "https://www.facebook.com/NhomSFR.ueh"
     },
     {
       "name": "CLB Chứng Khoán SCUE",
-      "url": "https://mbasic.facebook.com/clbscue"
+      "url": "https://www.facebook.com/clbscue"
     },
     {
       "name": "CLBBatdongsanREC",
-      "url": "https://mbasic.facebook.com/CLBBatdongsanRECUEH"
+      "url": "https://www.facebook.com/CLBBatdongsanRECUEH"
     },
     {
       "name": "Tuấn Tú Khôi Ngô",
-      "url": "https://mbasic.facebook.com/profile.php?id=100089346318168"
+      "url": "https://www.facebook.com/profile.php?id=100089346318168"
     }
   ],
   "keywords": [

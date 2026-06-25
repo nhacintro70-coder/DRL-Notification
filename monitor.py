@@ -1,13 +1,15 @@
 """
 monitor.py
-Theo dõi các fanpage Facebook (qua bản mbasic, không cần đăng nhập nếu page public),
+Theo dõi các fanpage Facebook (qua www.facebook.com, dùng Playwright + Stealth),
 lọc bài viết có chứa từ khóa liên quan điểm rèn luyện / cập nhật MSSV,
 và gửi thông báo qua Telegram Bot.
 
 Cách chạy thử ở local:
     pip install -r requirements.txt
+    playwright install chromium
     export TELEGRAM_BOT_TOKEN="xxx"
     export TELEGRAM_CHAT_ID="xxx"
+    export FB_COOKIE="xxx"
     python monitor.py
 
 Trên GitHub Actions, các biến trên được lấy từ Secrets (xem file workflow).
@@ -20,8 +22,8 @@ import sys
 import unicodedata
 from pathlib import Path
 
-import requests
-from bs4 import BeautifulSoup
+import requests as http_requests  # dùng riêng cho Telegram API
+from playwright.sync_api import sync_playwright
 
 CONFIG_PATH = Path("pages_config.json")
 STATE_PATH = Path("seen_posts.json")
@@ -29,34 +31,18 @@ MATCHED_LOG_PATH = Path("matched_posts.json")  # dùng cho website sau này
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
-# Tùy chọn: nếu mbasic chặn truy cập ẩn danh, có thể truyền cookie của
-# 1 tài khoản Facebook cá nhân (lấy từ trình duyệt) vào biến môi trường FB_COOKIE.
+# Cookie của 1 tài khoản Facebook cá nhân (lấy từ trình duyệt).
 # Lưu ý: việc này dùng tài khoản thật của bạn để duyệt web tự động, không phải
 # hành vi giả mạo, nhưng vẫn nằm ngoài cách dùng thông thường mà Facebook cho phép
 # trong Điều khoản dịch vụ — cân nhắc rủi ro trước khi dùng.
 FB_COOKIE = os.environ.get("FB_COOKIE", "")
 
-HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
-    ),
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
-    "Sec-Ch-Ua-Mobile": "?0",
-    "Sec-Ch-Ua-Platform": '"Windows"',
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Upgrade-Insecure-Requests": "1"
-}
-if FB_COOKIE:
-    HEADERS["Cookie"] = FB_COOKIE
-
 MAX_SEEN_PER_PAGE = 300  # tránh file state phình to vô hạn
 
+
+# ---------------------------------------------------------------------------
+# Tiện ích chung
+# ---------------------------------------------------------------------------
 
 def strip_diacritics(text: str) -> str:
     """Bỏ dấu tiếng Việt để so khớp từ khóa không phân biệt dấu."""
@@ -75,67 +61,6 @@ def load_json(path: Path, default):
 
 def save_json(path: Path, data):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-
-
-def fetch_posts(page_url: str):
-    """
-    Lấy danh sách bài viết gần đây từ 1 trang mbasic.facebook.com.
-    Trả về list các dict {id, text, link}.
-    Cấu trúc HTML của mbasic có thể thay đổi theo thời gian — đây là cách
-    trích xuất khá tổng quát, có thể cần chỉnh lại nếu Facebook đổi layout.
-    """
-    try:
-        resp = requests.get(page_url, headers=HEADERS, timeout=20)
-    except requests.RequestException as e:
-        print(f"[LỖI] Không fetch được {page_url}: {e}")
-        return []
-
-    if resp.status_code != 200:
-        print(f"[CẢNH BÁO] {page_url} trả về status {resp.status_code}")
-        return []
-
-    html = resp.text
-    if "login" in resp.url.lower() or "Đăng nhập" in html[:2000]:
-        print(f"[CẢNH BÁO] {page_url} có vẻ đang yêu cầu đăng nhập — "
-              f"có thể cần set FB_COOKIE để đọc được nội dung.")
-
-    # Tắt cảnh báo XML của BeautifulSoup
-    import warnings
-    from bs4 import XMLParsedAsHTMLWarning
-    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
-
-    soup = BeautifulSoup(html, "lxml")
-    posts = []
-
-    # Thử nhiều cách lấy bài viết (cập nhật các class mới của Facebook)
-    candidates = soup.find_all("article")
-    if not candidates:
-        candidates = soup.select("div[data-ft]")
-    if not candidates:
-        candidates = soup.select("div[role='article']")
-    if not candidates:
-        # Lấy tất cả thẻ div nằm trong vùng id="recent" (bài viết gần đây)
-        recent_div = soup.find("div", id="recent")
-        if recent_div:
-            candidates = recent_div.find_all("div", recursive=False)
-
-    for node in candidates:
-        text = node.get_text(separator=" ", strip=True)
-        if not text or len(text) < 5:
-            continue
-        link_tag = node.find("a", href=True)
-        link = link_tag["href"] if link_tag else page_url
-        if link.startswith("/"):
-            link = "https://mbasic.facebook.com" + link
-        post_id = re.sub(r"\s+", " ", text)[:120]  # dùng đoạn text đầu làm id tạm
-        posts.append({"id": post_id, "text": text, "link": link})
-
-    if not posts:
-        print(f"[DEBUG] Không tìm thấy bài viết. Title của trang: '{soup.title.string if soup.title else 'None'}'")
-        # In ra 500 ký tự text đầu tiên trên trang để xem có phải bị chặn / login không
-        print(f"[DEBUG] Nội dung trang: {soup.get_text(separator=' ', strip=True)[:500]}")
-
-    return posts
 
 
 def matches_keywords(text: str, keywords) -> bool:
@@ -158,16 +83,114 @@ def send_telegram(message: str):
         "disable_web_page_preview": False,
     }
     try:
-        r = requests.post(url, json=payload, timeout=15)
+        r = http_requests.post(url, json=payload, timeout=15)
         if r.status_code != 200:
             print(f"[LỖI] Gửi Telegram thất bại: {r.status_code} {r.text}")
-    except requests.RequestException as e:
+    except http_requests.RequestException as e:
         print(f"[LỖI] Gửi Telegram lỗi: {e}")
 
 
+# ---------------------------------------------------------------------------
+# Chuyển đổi cookie từ chuỗi sang định dạng Playwright
+# ---------------------------------------------------------------------------
+
+def parse_cookie_string(cookie_str: str) -> list[dict]:
+    """
+    Chuyển chuỗi cookie dạng 'key1=val1; key2=val2; ...'
+    thành list dict theo định dạng Playwright context.add_cookies().
+    """
+    cookies = []
+    for pair in cookie_str.split(";"):
+        pair = pair.strip()
+        if not pair or "=" not in pair:
+            continue
+        name, value = pair.split("=", 1)
+        cookies.append({
+            "name": name.strip(),
+            "value": value.strip(),
+            "domain": ".facebook.com",
+            "path": "/",
+        })
+    return cookies
+
+
+# ---------------------------------------------------------------------------
+# Lấy bài viết bằng Playwright
+# ---------------------------------------------------------------------------
+
+def fetch_posts_playwright(page_obj, page_url: str) -> list[dict]:
+    """
+    Dùng Playwright page object để mở 1 URL Facebook,
+    đợi JS render, và trích xuất bài viết.
+    Trả về list dict {id, text, link}.
+    """
+    try:
+        page_obj.goto(page_url, wait_until="domcontentloaded", timeout=30000)
+    except Exception as e:
+        print(f"[LỖI] Không mở được {page_url}: {e}")
+        return []
+
+    # Đợi bài viết render (tối đa 15 giây)
+    try:
+        page_obj.wait_for_selector('div[role="article"]', timeout=15000)
+    except Exception:
+        # Có thể trang không có bài viết hoặc bị chặn
+        pass
+
+    # Cuộn xuống một chút để load thêm bài viết
+    try:
+        page_obj.evaluate("window.scrollBy(0, 1500)")
+        page_obj.wait_for_timeout(2000)
+    except Exception:
+        pass
+
+    # Trích xuất bài viết
+    posts = []
+    articles = page_obj.query_selector_all('div[role="article"]')
+
+    if not articles:
+        # Debug: in ra title và nội dung trang khi không tìm thấy bài viết
+        title = page_obj.title()
+        body_text = page_obj.inner_text("body")[:500] if page_obj.query_selector("body") else ""
+        print(f"[DEBUG] Không tìm thấy bài viết. Title: '{title}'")
+        print(f"[DEBUG] Nội dung trang: {body_text}")
+        return []
+
+    for article in articles:
+        try:
+            text = article.inner_text()
+            text = re.sub(r"\s+", " ", text).strip()
+            if not text or len(text) < 10:
+                continue
+
+            # Tìm link bài viết (thường nằm trong thẻ <a> có href chứa /posts/ hoặc /permalink/)
+            link = page_url  # fallback
+            link_els = article.query_selector_all("a[href]")
+            for a in link_els:
+                href = a.get_attribute("href") or ""
+                if any(pattern in href for pattern in ["/posts/", "/permalink/", "story_fbid=", "/photos/", "/videos/"]):
+                    if href.startswith("/"):
+                        href = "https://www.facebook.com" + href
+                    link = href.split("?")[0]  # bỏ query params rác
+                    break
+
+            post_id = text[:120]
+            posts.append({"id": post_id, "text": text, "link": link})
+        except Exception as e:
+            print(f"[CẢNH BÁO] Lỗi khi xử lý 1 bài viết: {e}")
+            continue
+
+    return posts
+
+
+# ---------------------------------------------------------------------------
+# Hàm chính
+# ---------------------------------------------------------------------------
+
 def main():
-    if sys.platform == 'win32':
-        sys.stdout.reconfigure(encoding='utf-8')
+    if sys.platform == "win32":
+        sys.stdout.reconfigure(encoding="utf-8")
+
     config = load_json(CONFIG_PATH, {"pages": [], "keywords": []})
     pages = config.get("pages", [])
     keywords = config.get("keywords", [])
@@ -175,49 +198,105 @@ def main():
         print("Chưa có fanpage nào trong pages_config.json — không có gì để chạy.")
         return
 
-    seen_state = load_json(STATE_PATH, {})  # {page_name: [post_id, ...]}
-    matched_log = load_json(MATCHED_LOG_PATH, [])  # list các bài đã match, mới nhất trước
+    if not FB_COOKIE:
+        print("[LỖI] Chưa set biến môi trường FB_COOKIE — không thể đăng nhập Facebook.")
+        return
 
+    seen_state = load_json(STATE_PATH, {})   # {page_name: [post_id, ...]}
+    matched_log = load_json(MATCHED_LOG_PATH, [])  # list bài đã match, mới nhất trước
     total_new = 0
 
-    for page in pages:
-        name = page["name"]
-        url = page["url"]
-        print(f"--- Đang kiểm tra: {name} ({url}) ---")
+    # Khởi tạo Playwright + Stealth
+    with sync_playwright() as pw:
+        browser = pw.chromium.launch(
+            headless=True,
+            args=[
+                "--disable-blink-features=AutomationControlled",
+                "--no-sandbox",
+            ],
+        )
+        context = browser.new_context(
+            viewport={"width": 1280, "height": 800},
+            user_agent=(
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+            ),
+            locale="vi-VN",
+            timezone_id="Asia/Ho_Chi_Minh",
+        )
 
-        seen_ids = set(seen_state.get(name, []))
-        posts = fetch_posts(url)
-        print(f"  Tìm thấy {len(posts)} bài viết trên trang.")
+        # Áp dụng stealth (ẩn dấu hiệu tự động hóa)
+        try:
+            from playwright_stealth import stealth_sync
+            stealth_sync(context)
+            print("[INFO] Đã áp dụng playwright-stealth.")
+        except ImportError:
+            print("[CẢNH BÁO] Không tìm thấy playwright-stealth, chạy không có stealth.")
 
-        new_ids_this_run = []
-        for post in posts:
-            if post["id"] in seen_ids:
-                continue
-            new_ids_this_run.append(post["id"])
+        # Nạp cookie
+        cookies = parse_cookie_string(FB_COOKIE)
+        if cookies:
+            context.add_cookies(cookies)
+            print(f"[INFO] Đã nạp {len(cookies)} cookies.")
+        else:
+            print("[CẢNH BÁO] Không parse được cookie nào từ FB_COOKIE.")
 
-            if matches_keywords(post["text"], keywords):
-                total_new += 1
-                snippet = post["text"][:300]
-                message = (
-                    f"🔔 <b>{name}</b> vừa đăng bài liên quan điểm rèn luyện:\n\n"
-                    f"{snippet}...\n\n"
-                    f"👉 {post['link']}"
-                )
-                send_telegram(message)
-                matched_log.insert(0, {
-                    "page": name,
-                    "text": post["text"],
-                    "link": post["link"],
-                })
+        page = context.new_page()
 
-        # cập nhật seen_ids, giữ tối đa MAX_SEEN_PER_PAGE id gần nhất
-        updated_seen = list(seen_ids) + new_ids_this_run
-        seen_state[name] = updated_seen[-MAX_SEEN_PER_PAGE:]
+        # Truy cập trang chủ Facebook trước để kích hoạt cookie
+        try:
+            page.goto("https://www.facebook.com/", wait_until="domcontentloaded", timeout=20000)
+            page.wait_for_timeout(2000)
+            # Kiểm tra đăng nhập thành công
+            if page.query_selector('div[role="banner"]') or page.query_selector('a[aria-label="Facebook"]'):
+                print("[INFO] Đăng nhập Facebook thành công!")
+            else:
+                title = page.title()
+                print(f"[CẢNH BÁO] Có thể chưa đăng nhập được. Title: '{title}'")
+        except Exception as e:
+            print(f"[LỖI] Không truy cập được Facebook: {e}")
+
+        # Duyệt từng page
+        for pg in pages:
+            name = pg["name"]
+            url = pg["url"]
+            print(f"\n--- Đang kiểm tra: {name} ({url}) ---")
+
+            seen_ids = set(seen_state.get(name, []))
+            posts = fetch_posts_playwright(page, url)
+            print(f"  Tìm thấy {len(posts)} bài viết trên trang.")
+
+            new_ids_this_run = []
+            for post in posts:
+                if post["id"] in seen_ids:
+                    continue
+                new_ids_this_run.append(post["id"])
+
+                if matches_keywords(post["text"], keywords):
+                    total_new += 1
+                    snippet = post["text"][:300]
+                    message = (
+                        f"🔔 <b>{name}</b> vừa đăng bài liên quan điểm rèn luyện:\n\n"
+                        f"{snippet}...\n\n"
+                        f"👉 {post['link']}"
+                    )
+                    send_telegram(message)
+                    matched_log.insert(0, {
+                        "page": name,
+                        "text": post["text"],
+                        "link": post["link"],
+                    })
+
+            # Cập nhật seen_ids, giữ tối đa MAX_SEEN_PER_PAGE id gần nhất
+            updated_seen = list(seen_ids) + new_ids_this_run
+            seen_state[name] = updated_seen[-MAX_SEEN_PER_PAGE:]
+
+        browser.close()
 
     save_json(STATE_PATH, seen_state)
-    save_json(MATCHED_LOG_PATH, matched_log[:200])  # giữ tối đa 200 bài gần nhất cho web sau này
+    save_json(MATCHED_LOG_PATH, matched_log[:200])  # giữ tối đa 200 bài gần nhất
 
-    print(f"=== Hoàn tất. {total_new} bài mới khớp từ khóa. ===")
+    print(f"\n=== Hoàn tất. {total_new} bài mới khớp từ khóa. ===")
 
 
 if __name__ == "__main__":
