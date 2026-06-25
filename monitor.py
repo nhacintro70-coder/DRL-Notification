@@ -154,9 +154,17 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
         const results = [];
 
         for (const article of allArticles) {
-            // Bỏ qua nếu article này nằm lồng bên trong 1 article khác (= comment)
+            // Bỏ qua nếu article này nằm lồng bên trong 1 article khác (= comment cũ)
             const parentArticle = article.parentElement?.closest('div[role="article"]');
             if (parentArticle) continue;
+
+            // Bỏ qua nếu article này là một comment (dựa trên aria-label)
+            // Facebook giao diện mới thường để comment dưới dạng div[role="article"] ngang hàng với post
+            const ariaLabel = (article.getAttribute('aria-label') || '').toLowerCase();
+            if (ariaLabel.includes('comment') || ariaLabel.includes('bình luận') || 
+                ariaLabel.includes('reply') || ariaLabel.includes('trả lời')) {
+                continue;
+            }
 
             // Lấy toàn bộ text thô của article
             const fullText = article.innerText || '';
