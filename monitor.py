@@ -133,7 +133,7 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
 
     # Đợi bài viết render (tối đa 15 giây)
     try:
-        page_obj.wait_for_selector('div[role="article"]', timeout=15000)
+        page_obj.wait_for_selector('div[role="article"], div[aria-posinset], div[data-pagelet^="FeedUnit"]', timeout=15000)
     except Exception:
         pass
 
@@ -150,13 +150,15 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
     # - Chỉ lấy nội dung bài viết trước khu vực nút Thích/Bình luận/Chia sẻ (ranh giới tự nhiên)
     raw_posts = page_obj.evaluate("""
     () => {
-        const allArticles = document.querySelectorAll('div[role="article"]');
+        const selector = 'div[role="article"], div[aria-posinset], div[data-pagelet^="FeedUnit"]';
+        const allArticles = document.querySelectorAll(selector);
         const results = [];
 
         for (const article of allArticles) {
             // Bỏ qua nếu article này nằm lồng bên trong 1 article khác (= comment cũ)
-            const parentArticle = article.parentElement?.closest('div[role="article"]');
+            const parentArticle = article.parentElement?.closest(selector);
             if (parentArticle) continue;
+
 
             // Bỏ qua nếu article này là một comment (dựa trên aria-label)
             // LƯU Ý: Phải dùng startsWith thay vì includes. 
