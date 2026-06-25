@@ -143,17 +143,23 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
         page_obj.wait_for_timeout(2000)
 
     # Tự động tìm và bấm tất cả các nút "Xem thêm" / "See more" để bung nội dung
-    page_obj.evaluate("""
-        () => {
-            const buttons = document.querySelectorAll('div[role="button"]');
-            for (const btn of buttons) {
-                const txt = (btn.innerText || '').trim();
-                if (txt.includes('Xem thêm') || txt.includes('See more')) {
-                    btn.click();
+    try:
+        page_obj.evaluate("""
+            () => {
+                const nodes = document.querySelectorAll('div[role="button"], span, a, div');
+                for (const node of nodes) {
+                    if (!node.innerText) continue;
+                    const txt = node.innerText.trim();
+                    // Chỉ click vào những thẻ có chữ Xem thêm và nội dung thẻ rất ngắn (tránh click nhầm cả bài viết)
+                    if ((txt.includes('Xem thêm') || txt.includes('See more')) && txt.length <= 15) {
+                        try { node.click(); } catch(e) {}
+                    }
                 }
             }
-        }
-    """)
+        """)
+    except Exception as e:
+        print(f"[DEBUG] Lỗi bấm Xem thêm: {e}")
+    
     page_obj.wait_for_timeout(2000) # Chờ DOM bung đầy đủ nội dung
 
     # Trích xuất bài viết bằng JavaScript:
