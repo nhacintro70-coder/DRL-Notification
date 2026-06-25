@@ -38,9 +38,19 @@ FB_COOKIE = os.environ.get("FB_COOKIE", "")
 
 HEADERS = {
     "User-Agent": (
-        "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/100.0 Mobile Safari/537.36"
-    )
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
+    ),
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+    "Accept-Language": "vi-VN,vi;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Sec-Ch-Ua": '"Chromium";v="122", "Not(A:Brand";v="24", "Google Chrome";v="122"',
+    "Sec-Ch-Ua-Mobile": "?0",
+    "Sec-Ch-Ua-Platform": '"Windows"',
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Upgrade-Insecure-Requests": "1"
 }
 if FB_COOKIE:
     HEADERS["Cookie"] = FB_COOKIE
@@ -89,14 +99,25 @@ def fetch_posts(page_url: str):
         print(f"[CẢNH BÁO] {page_url} có vẻ đang yêu cầu đăng nhập — "
               f"có thể cần set FB_COOKIE để đọc được nội dung.")
 
+    # Tắt cảnh báo XML của BeautifulSoup
+    import warnings
+    from bs4 import XMLParsedAsHTMLWarning
+    warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+
     soup = BeautifulSoup(html, "lxml")
     posts = []
 
-    # Trên mbasic, mỗi bài đăng thường nằm trong các thẻ <article> hoặc
-    # các div có id dạng "m_story_permalink_view" — ta thử vài cách bắt khác nhau.
+    # Thử nhiều cách lấy bài viết (cập nhật các class mới của Facebook)
     candidates = soup.find_all("article")
     if not candidates:
         candidates = soup.select("div[data-ft]")
+    if not candidates:
+        candidates = soup.select("div[role='article']")
+    if not candidates:
+        # Lấy tất cả thẻ div nằm trong vùng id="recent" (bài viết gần đây)
+        recent_div = soup.find("div", id="recent")
+        if recent_div:
+            candidates = recent_div.find_all("div", recursive=False)
 
     for node in candidates:
         text = node.get_text(separator=" ", strip=True)
