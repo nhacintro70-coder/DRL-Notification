@@ -217,6 +217,7 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
             }
 
             results.push({ text: postText, link: link });
+            if (results.length >= 5) break;
         }
         return results;
     }
@@ -284,11 +285,20 @@ def main():
 
         # Áp dụng stealth (ẩn dấu hiệu tự động hóa)
         try:
-            from playwright_stealth import stealth_sync
+            try:
+                # Hỗ trợ playwright-stealth v1
+                from playwright_stealth import stealth_sync
+            except ImportError:
+                # Hỗ trợ playwright-stealth v2+
+                from playwright_stealth import Stealth
+                def stealth_sync(page):
+                    Stealth().apply_stealth_sync(page)
+            HAS_STEALTH = True
             stealth_sync(context)
             print("[INFO] Đã áp dụng playwright-stealth.")
-        except ImportError:
-            print("[CẢNH BÁO] Không tìm thấy playwright-stealth, chạy không có stealth.")
+        except Exception as e:
+            print(f"[CẢNH BÁO] Không tải được playwright-stealth: {e}")
+            HAS_STEALTH = False
 
         # Nạp cookie
         cookies = parse_cookie_string(FB_COOKIE)
