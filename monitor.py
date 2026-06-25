@@ -166,25 +166,36 @@ def fetch_posts_playwright(page_obj, page_url: str, max_posts: int = 5) -> list[
                 continue;
             }
 
-            // Ưu tiên lấy text sạch từ phần thân bài viết (bỏ qua header bị mã hóa chống bot)
+            // 1. Ưu tiên cao nhất: Tìm đích danh thẻ chứa văn bản bài đăng
             let postText = '';
-            let bodyText = '';
-            const dirAutoDivs = article.querySelectorAll('div[dir="auto"]');
-            for (const div of dirAutoDivs) {
-                const txt = (div.innerText || '').trim();
-                // Bỏ qua tên tác giả và rác thời gian (thường ngắn)
-                if (txt.length > 25) {
-                    bodyText += txt + '\\n';
+            const msgNode = article.querySelector('div[data-ad-preview="message"]');
+            if (msgNode) {
+                postText = msgNode.innerText || '';
+            }
+
+            // 2. Nếu không có (có thể là bài share, đổi ảnh đại diện...), thử dùng các thẻ dir="auto"
+            if (!postText || postText.length < 10) {
+                let bodyText = '';
+                const seenTexts = new Set();
+                const dirAutoDivs = article.querySelectorAll('div[dir="auto"]');
+                for (const div of dirAutoDivs) {
+                    const txt = (div.innerText || '').trim();
+                    // Bỏ qua tên tác giả và rác thời gian (thường ngắn)
+                    if (txt.length > 25 && !seenTexts.has(txt)) {
+                        seenTexts.add(txt);
+                        bodyText += txt + '\\n';
+                    }
                 }
+                if (bodyText.length > 10) postText = bodyText;
             }
 
-            if (bodyText.length > 10) {
-                postText = bodyText;
-            }
-
-            // Nếu không tìm thấy văn bản dài (có thể post chỉ chứa ảnh/caption ngắn)
+            // 3. Fallback cuối cùng: Lấy toàn bộ text và dọn rác
             if (!postText || postText.length < 10) {
                 let fullText = article.innerText || '';
+                
+                // Dọn sạch rác SVG lặp chữ "Facebook" và các khoảng trắng
+                fullText = fullText.replace(/(Facebook\\s*)+/gi, '').trim();
+
                 const cutStrings = [
                     'Thích\\nBình luận',
                     'Like\\nComment',
