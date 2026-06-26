@@ -160,179 +160,163 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
         except Exception:
             pass
 
-        # Cuộn xuống vài lần để tải đủ bài viết
-        for _ in range(3):
-            await page_obj.evaluate("window.scrollBy(0, 1200)")
-            await page_obj.wait_for_timeout(2000)
+        all_posts = []
+        seen_texts = set()
 
-        # Tự động tìm và bấm tất cả các nút "Xem thêm" / "See more" để bung nội dung
-        try:
-            await page_obj.evaluate("""
-                () => {
-                    const nodes = document.querySelectorAll('div[role="button"], span, a, div');
-                    for (const node of nodes) {
-                        if (!node.innerText) continue;
-                        const txt = node.innerText.trim();
-                        // Chỉ click vào những thẻ có chữ Xem thêm và nội dung thẻ rất ngắn (tránh click nhầm cả bài viết)
-                        if ((txt.includes('Xem thêm') || txt.includes('See more')) && txt.length <= 15) {
-                            try { node.click(); } catch(e) {}
+        # Cuộn và trích xuất từng bước để tránh bị Facebook xóa DOM bài viết cũ (Virtualization)
+        for step in range(4):
+            # Tự động tìm và bấm tất cả các nút "Xem thêm" / "See more" để bung nội dung ở màn hình hiện tại
+            try:
+                await page_obj.evaluate("""
+                    () => {
+                        const nodes = document.querySelectorAll('div[role="button"], span, a, div');
+                        for (const node of nodes) {
+                            if (!node.innerText) continue;
+                            const txt = node.innerText.trim();
+                            // Chỉ click vào những thẻ có chữ Xem thêm và nội dung thẻ rất ngắn
+                            if ((txt.includes('Xem thêm') || txt.includes('See more')) && txt.length <= 15) {
+                                try { node.click(); } catch(e) {}
+                            }
                         }
                     }
-                }
-            """)
-        except Exception as e:
-            print(f"[DEBUG] Lỗi bấm Xem thêm: {e}")
-        
-        await page_obj.wait_for_timeout(2000) # Chờ DOM bung đầy đủ nội dung
-
-        # Trích xuất bài viết bằng JavaScript:
-        # - Chỉ lấy top-level article (bài viết gốc), bỏ qua article lồng bên trong (comment)
-        # - Chỉ lấy nội dung bài viết trước khu vực nút Thích/Bình luận/Chia sẻ (ranh giới tự nhiên)
-        raw_posts = await page_obj.evaluate("""
-        () => {
-            const selector = 'div[aria-posinset], div[role="article"]';
-            let allArticles = Array.from(document.querySelectorAll(selector));
-            const results = [];
+                """)
+            except Exception as e:
+                print(f"[DEBUG] Lỗi bấm Xem thêm: {e}")
             
-            // 1. Lọc ra các bài hợp lệ (không phải comment, không nằm lồng trong bài khác)
-            let validArticles = [];
-            for (const article of allArticles) {
-                const parentArticle = article.parentElement?.closest(selector);
-                if (parentArticle) continue;
+            await page_obj.wait_for_timeout(1500) # Chờ DOM bung đầy đủ nội dung
 
-                const ariaLabel = (article.getAttribute('aria-label') || '').trim().toLowerCase();
-                if (ariaLabel.startsWith('comment') || ariaLabel.startsWith('bình luận') || 
-                    ariaLabel.startsWith('reply') || ariaLabel.startsWith('trả lời')) {
-                    continue;
-                }
-                validArticles.push(article);
-            }
-            
-            // 2. Ép sắp xếp bài viết theo đúng thứ tự hiển thị trên màn hình (Từ trên xuống dưới)
-            // Việc này khắc phục lỗi DOM của Facebook bị lộn xộn khi cuộn trang
-            validArticles.sort((a, b) => {
-                const rectA = a.getBoundingClientRect();
-                const rectB = b.getBoundingClientRect();
-                return rectA.top - rectB.top;
-            });
+            # Trích xuất bài viết bằng JavaScript cho vùng DOM đang hiển thị
+            raw_posts = await page_obj.evaluate("""
+            () => {
+                const selector = 'div[aria-posinset], div[role="article"]';
+                let allArticles = Array.from(document.querySelectorAll(selector));
+                const results = [];
+                
+                // 1. Lọc ra các bài hợp lệ (không phải comment, không nằm lồng trong bài khác)
+                let validArticles = [];
+                for (const article of allArticles) {
+                    const parentArticle = article.parentElement?.closest(selector);
+                    if (parentArticle) continue;
 
-            // 3. Tiến hành trích xuất dữ liệu theo đúng thứ tự
-            for (const article of validArticles) {
-                // Ưu tiên cao nhất: Tìm đích danh thẻ chứa văn bản bài đăng
-                let postText = '';
-                const msgNode = article.querySelector('div[data-ad-preview="message"]');
-                if (msgNode) {
-                    postText = msgNode.innerText || '';
-                }
-
-                // 2. Nếu không có (có thể là bài share, đổi ảnh đại diện...), thử dùng các thẻ dir="auto"
-                if (!postText || postText.length < 10) {
-                    let bodyText = '';
-                    const seenTexts = new Set();
-                    const dirAutoDivs = article.querySelectorAll('div[dir="auto"]');
-                    for (const div of dirAutoDivs) {
-                        const txt = (div.innerText || '').trim();
-                        // Bỏ qua tên tác giả và rác thời gian (thường ngắn)
-                        if (txt.length > 25 && !seenTexts.has(txt)) {
-                            seenTexts.add(txt);
-                            bodyText += txt + '\\n';
-                        }
-                    }
-                    if (bodyText.length > 10) postText = bodyText;
-                }
-
-                // 3. Fallback cuối cùng: Lấy toàn bộ text và dọn rác
-                if (!postText || postText.length < 10) {
-                    let fullText = article.innerText || '';
-                    
-                    // Dọn sạch rác SVG lặp chữ "Facebook" và các khoảng trắng
-                    fullText = fullText.replace(/(Facebook\\s*)+/gi, '').trim();
-
-                    const cutStrings = [
-                        'Thích\\nBình luận',
-                        'Like\\nComment',
-                        'Thích\\nComment',
-                        'Tất cả bình luận',
-                        'All comments',
-                        'Phù hợp nhất',
-                        'Mới nhất\\n',
-                        ' lượt thích\\n',
-                        ' bình luận\\n',
-                        ' likes\\n',
-                        ' comments\\n',
-                        'Thích\\nTrả lời',
-                        'Like\\nReply'
-                    ];
-                    for (const cutStr of cutStrings) {
-                        const idx = fullText.indexOf(cutStr);
-                        if (idx > 10) {
-                            fullText = fullText.substring(0, idx);
-                            break;
-                        }
-                    }
-                    postText = fullText;
-                }
-
-                postText = postText.trim();
-                if (!postText || postText.length < 10) continue;
-
-                // Tìm link bài viết bằng hệ thống chấm điểm (Scoring System)
-                let bestLink = '';
-                let bestScore = 0;
-                const anchors = article.querySelectorAll('a[href]');
-                for (const a of anchors) {
-                    let href = a.getAttribute('href') || '';
-                    
-                    // Bỏ qua các link hashtag, link ngoài hoặc link profile
-                    if (href.includes('/hashtag/') || href.includes('l.facebook.com/l.php')) {
+                    const ariaLabel = (article.getAttribute('aria-label') || '').trim().toLowerCase();
+                    if (ariaLabel.startsWith('comment') || ariaLabel.startsWith('bình luận') || 
+                        ariaLabel.startsWith('reply') || ariaLabel.startsWith('trả lời')) {
                         continue;
                     }
-
-                    let currentScore = 0;
-                    // Điểm 3 (Cao nhất): Link chuẩn trực tiếp đến bài viết, định dạng chia sẻ mới của Facebook
-                    if (href.includes('/posts/') || href.includes('/permalink/') || 
-                        href.includes('story_fbid=') || href.includes('/share/p/') || 
-                        href.includes('/share/v/')) {
-                        currentScore = 3;
-                    } 
-                    // Điểm 2: Bài đăng đặc thù như Reel, Event, Video
-                    else if (href.includes('/reel/') || href.includes('/events/') || 
-                             href.includes('/videos/') || href.includes('/video/')) {
-                        currentScore = 2;
-                    } 
-                    // Điểm 1 (Cấp thấp nhất): Chỉ lấy link từng bức ảnh (photo) nếu không tìm thấy link nào khác
-                    else if (href.includes('/photos/') || href.includes('/photo/') || 
-                             href.includes('/photo.php') || href.includes('fbid=')) {
-                        currentScore = 1;
-                    }
-
-                    if (currentScore > bestScore) {
-                        bestScore = currentScore;
-                        let link = href.startsWith('/') ? 'https://www.facebook.com' + href : href;
-                        
-                        // Xóa các tham số tracking của Facebook để link gọn hơn nhưng KHÔNG xóa các ID quan trọng
-                        try {
-                            const urlObj = new URL(link);
-                            urlObj.searchParams.delete('__cft__[0]');
-                            urlObj.searchParams.delete('__tn__');
-                            bestLink = urlObj.toString();
-                        } catch(e) {
-                            bestLink = link.split('?__cft__')[0].split('&__cft__')[0];
-                        }
-                    }
-                    
-                    // Nếu đã tìm thấy link điểm tuyệt đối (3) thì dừng tìm kiếm để lấy link đó
-                    if (bestScore === 3) break;
+                    validArticles.push(article);
                 }
+                
+                // 2. Ép sắp xếp bài viết theo đúng thứ tự hiển thị trên màn hình (Từ trên xuống dưới)
+                validArticles.sort((a, b) => {
+                    const rectA = a.getBoundingClientRect();
+                    const rectB = b.getBoundingClientRect();
+                    return rectA.top - rectB.top;
+                });
 
-                results.push({ text: postText, link: bestLink });
-                if (results.length >= 5) break;
+                // 3. Tiến hành trích xuất dữ liệu
+                for (const article of validArticles) {
+                    let postText = '';
+                    const msgNode = article.querySelector('div[data-ad-preview="message"]');
+                    if (msgNode) {
+                        postText = msgNode.innerText || '';
+                    }
+
+                    if (!postText || postText.length < 10) {
+                        let bodyText = '';
+                        const seenTexts = new Set();
+                        const dirAutoDivs = article.querySelectorAll('div[dir="auto"]');
+                        for (const div of dirAutoDivs) {
+                            const txt = (div.innerText || '').trim();
+                            if (txt.length > 25 && !seenTexts.has(txt)) {
+                                seenTexts.add(txt);
+                                bodyText += txt + '\n';
+                            }
+                        }
+                        if (bodyText.length > 10) postText = bodyText;
+                    }
+
+                    if (!postText || postText.length < 10) {
+                        let fullText = article.innerText || '';
+                        fullText = fullText.replace(/(Facebook\s*)+/gi, '').trim();
+                        const cutStrings = [
+                            'Thích\nBình luận', 'Like\nComment', 'Thích\nComment',
+                            'Tất cả bình luận', 'All comments', 'Phù hợp nhất',
+                            'Mới nhất\n', ' lượt thích\n', ' bình luận\n',
+                            ' likes\n', ' comments\n', 'Thích\nTrả lời', 'Like\nReply'
+                        ];
+                        for (const cutStr of cutStrings) {
+                            const idx = fullText.indexOf(cutStr);
+                            if (idx > 10) {
+                                fullText = fullText.substring(0, idx);
+                                break;
+                            }
+                        }
+                        postText = fullText;
+                    }
+
+                    postText = postText.trim();
+                    if (!postText || postText.length < 10) continue;
+
+                    let bestLink = '';
+                    let bestScore = 0;
+                    const anchors = article.querySelectorAll('a[href]');
+                    for (const a of anchors) {
+                        let href = a.getAttribute('href') || '';
+                        if (href.includes('/hashtag/') || href.includes('l.facebook.com/l.php')) continue;
+
+                        let currentScore = 0;
+                        if (href.includes('/posts/') || href.includes('/permalink/') || 
+                            href.includes('story_fbid=') || href.includes('/share/p/') || 
+                            href.includes('/share/v/')) {
+                            currentScore = 3;
+                        } else if (href.includes('/reel/') || href.includes('/events/') || 
+                                 href.includes('/videos/') || href.includes('/video/')) {
+                            currentScore = 2;
+                        } else if (href.includes('/photos/') || href.includes('/photo/') || 
+                                 href.includes('/photo.php') || href.includes('fbid=')) {
+                            currentScore = 1;
+                        }
+
+                        if (currentScore > bestScore) {
+                            bestScore = currentScore;
+                            let link = href.startsWith('/') ? 'https://www.facebook.com' + href : href;
+                            try {
+                                const urlObj = new URL(link);
+                                urlObj.searchParams.delete('__cft__[0]');
+                                urlObj.searchParams.delete('__tn__');
+                                bestLink = urlObj.toString();
+                            } catch(e) {
+                                bestLink = link.split('?__cft__')[0].split('&__cft__')[0];
+                            }
+                        }
+                        if (bestScore === 3) break;
+                    }
+
+                    results.push({ text: postText, link: bestLink });
+                }
+                return results;
             }
-            return results;
-        }
-        """)
+            """)
 
-        if not raw_posts:
+            # Thêm các bài viết mới tìm thấy vào danh sách tổng
+            import re
+            for item in raw_posts:
+                text_clean = re.sub(r"\s+", " ", item["text"]).strip()
+                if text_clean not in seen_texts:
+                    seen_texts.add(text_clean)
+                    post_id = text_clean[:300]
+                    link = item["link"] or page_url
+                    all_posts.append({"id": post_id, "text": text_clean, "link": link})
+            
+            # Đã đủ bài thì thoát vòng lặp cuộn
+            if len(all_posts) >= max_posts:
+                break
+                
+            # Chưa đủ thì cuộn xuống để Facebook render thêm bài mới
+            await page_obj.evaluate("window.scrollBy(0, 1000)")
+            await page_obj.wait_for_timeout(2000)
+
+        if not all_posts:
             title = await page_obj.title()
             body_text = await page_obj.inner_text("body")
             body_text = body_text[:500] if body_text else ""
@@ -340,15 +324,8 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
             print(f"[DEBUG] Nội dung trang (500 ký tự đầu): {body_text}")
             return []
 
-        # Giới hạn tối đa max_posts bài
-        posts = []
-        for item in raw_posts[:max_posts]:
-            text = re.sub(r"\s+", " ", item["text"]).strip()
-            post_id = text[:300]
-            link = item["link"] or page_url
-            posts.append({"id": post_id, "text": text, "link": link})
-
-        return posts
+        # Giới hạn đúng số lượng bài theo yêu cầu
+        return all_posts[:max_posts]
     finally:
         await page_obj.close()
 
