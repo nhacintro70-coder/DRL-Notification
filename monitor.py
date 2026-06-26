@@ -80,7 +80,9 @@ def matches_keywords(text: str, keywords, exclude_keywords=None) -> bool:
     return False
 
 
-def send_telegram(message: str):
+import time
+
+def send_telegram(message: str, retries=3):
     if not TELEGRAM_BOT_TOKEN or not TELEGRAM_CHAT_ID:
         print("[LỖI] Thiếu TELEGRAM_BOT_TOKEN hoặc TELEGRAM_CHAT_ID, không gửi được.")
         return
@@ -91,12 +93,22 @@ def send_telegram(message: str):
         "parse_mode": "HTML",
         "disable_web_page_preview": False,
     }
-    try:
-        r = http_requests.post(url, json=payload, timeout=15)
-        if r.status_code != 200:
-            print(f"[LỖI] Gửi Telegram thất bại: {r.status_code} {r.text}")
-    except http_requests.RequestException as e:
-        print(f"[LỖI] Gửi Telegram lỗi: {e}")
+    for attempt in range(retries):
+        try:
+            r = http_requests.post(url, json=payload, timeout=15)
+            if r.status_code == 200:
+                break
+            elif r.status_code == 429:
+                data = r.json()
+                wait_time = data.get("parameters", {}).get("retry_after", 5)
+                print(f"[CẢNH BÁO] Bị Telegram Rate-limit, tự động đợi {wait_time}s rồi gửi lại...")
+                time.sleep(wait_time + 1)
+            else:
+                print(f"[LỖI] Gửi Telegram thất bại: {r.status_code} {r.text}")
+                break
+        except http_requests.RequestException as e:
+            print(f"[LỖI] Gửi Telegram lỗi: {e}")
+            break
 
 
 # ---------------------------------------------------------------------------
