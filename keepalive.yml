@@ -1,0 +1,24 @@
+name: Keep workflows alive
+
+on:
+  schedule:
+    # Chạy mỗi chủ nhật lúc 0:00 UTC để giữ repo active
+    # GitHub tự disable scheduled workflows nếu repo không có activity 60 ngày
+    - cron: "0 0 * * 0"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  keepalive:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Giữ workflow active
+        uses: gautamkrishnar/keepalive-workflow@v2
+        with:
+          # Tạo commit nhỏ nếu repo sắp bị GitHub coi là inactive
+          use_api: true
