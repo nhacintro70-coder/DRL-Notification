@@ -64,8 +64,16 @@ def save_json(path: Path, data):
     path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def matches_keywords(text: str, keywords) -> bool:
+def matches_keywords(text: str, keywords, exclude_keywords=None) -> bool:
     normalized_text = strip_diacritics(text)
+    
+    # Kiểm tra danh sách loại trừ trước, nếu chứa từ cấm -> Bỏ qua
+    if exclude_keywords:
+        for ekw in exclude_keywords:
+            if strip_diacritics(ekw) in normalized_text:
+                return False
+                
+    # Nếu không bị loại trừ, kiểm tra từ khóa chính
     for kw in keywords:
         if strip_diacritics(kw) in normalized_text:
             return True
@@ -343,9 +351,10 @@ async def main():
     if sys.platform == "win32":
         sys.stdout.reconfigure(encoding="utf-8")
 
-    config = load_json(CONFIG_PATH, {"pages": [], "keywords": []})
+    config = load_json(CONFIG_PATH, {"pages": [], "keywords": [], "exclude_keywords": []})
     pages = config.get("pages", [])
     keywords = config.get("keywords", [])
+    exclude_keywords = config.get("exclude_keywords", [])
     if not pages:
         print("Chưa có fanpage nào trong pages_config.json — không có gì để chạy.")
         return
@@ -438,7 +447,7 @@ async def main():
                 continue
             new_ids_this_run.append(post["id"])
 
-            if matches_keywords(post["text"], keywords):
+            if matches_keywords(post["text"], keywords, exclude_keywords):
                 total_new += 1
                 snippet = post["text"][:300]
                 message = (

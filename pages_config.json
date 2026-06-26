@@ -201,5 +201,9 @@
     "ghi nhận rèn luyện sinh viên",
     "rèn luyện sinh viên",
     "hệ thống DRS"
+  ],
+  "exclude_keywords": [
+    "phúc khảo",
+    "phuc khao"
   ]
 }
