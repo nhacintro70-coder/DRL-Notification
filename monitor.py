@@ -191,22 +191,34 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
         raw_posts = await page_obj.evaluate("""
         () => {
             const selector = 'div[aria-posinset], div[role="article"]';
-            const allArticles = document.querySelectorAll(selector);
+            let allArticles = Array.from(document.querySelectorAll(selector));
             const results = [];
-
+            
+            // 1. Lọc ra các bài hợp lệ (không phải comment, không nằm lồng trong bài khác)
+            let validArticles = [];
             for (const article of allArticles) {
-                // Bỏ qua nếu article này nằm lồng bên trong 1 article khác (= comment cũ)
                 const parentArticle = article.parentElement?.closest(selector);
                 if (parentArticle) continue;
 
-                // Bỏ qua nếu article này là một comment (dựa trên aria-label)
                 const ariaLabel = (article.getAttribute('aria-label') || '').trim().toLowerCase();
                 if (ariaLabel.startsWith('comment') || ariaLabel.startsWith('bình luận') || 
                     ariaLabel.startsWith('reply') || ariaLabel.startsWith('trả lời')) {
                     continue;
                 }
+                validArticles.push(article);
+            }
+            
+            // 2. Ép sắp xếp bài viết theo đúng thứ tự hiển thị trên màn hình (Từ trên xuống dưới)
+            // Việc này khắc phục lỗi DOM của Facebook bị lộn xộn khi cuộn trang
+            validArticles.sort((a, b) => {
+                const rectA = a.getBoundingClientRect();
+                const rectB = b.getBoundingClientRect();
+                return rectA.top - rectB.top;
+            });
 
-                // 1. Ưu tiên cao nhất: Tìm đích danh thẻ chứa văn bản bài đăng
+            // 3. Tiến hành trích xuất dữ liệu theo đúng thứ tự
+            for (const article of validArticles) {
+                // Ưu tiên cao nhất: Tìm đích danh thẻ chứa văn bản bài đăng
                 let postText = '';
                 const msgNode = article.querySelector('div[data-ad-preview="message"]');
                 if (msgNode) {
