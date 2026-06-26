@@ -440,11 +440,11 @@ async def main():
     for pg in pages:
         name = pg["name"]
         posts = results.get(name, [])
-        seen_ids = set(seen_state.get(name, []))
+        old_seen_list = seen_state.get(name, [])
 
         new_ids_this_run = []
         for post in posts:
-            if post["id"] in seen_ids:
+            if post["id"] in old_seen_list or post["id"] in new_ids_this_run:
                 continue
             new_ids_this_run.append(post["id"])
 
@@ -465,7 +465,7 @@ async def main():
                 })
 
         # Cập nhật seen_ids, giữ tối đa MAX_SEEN_PER_PAGE id gần nhất
-        updated_seen = list(seen_ids) + new_ids_this_run
+        updated_seen = old_seen_list + new_ids_this_run
         seen_state[name] = updated_seen[-MAX_SEEN_PER_PAGE:]
 
     save_json(STATE_PATH, seen_state)
