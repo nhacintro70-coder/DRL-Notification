@@ -229,7 +229,7 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
                             const txt = (div.innerText || '').trim();
                             if (txt.length > 25 && !seenTexts.has(txt)) {
                                 seenTexts.add(txt);
-                                bodyText += txt + '\n';
+                                bodyText += txt + '\\n';
                             }
                         }
                         if (bodyText.length > 10) postText = bodyText;
@@ -237,12 +237,12 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
 
                     if (!postText || postText.length < 10) {
                         let fullText = article.innerText || '';
-                        fullText = fullText.replace(/(Facebook\s*)+/gi, '').trim();
+                        fullText = fullText.replace(/(Facebook\\s*)+/gi, '').trim();
                         const cutStrings = [
-                            'Thích\nBình luận', 'Like\nComment', 'Thích\nComment',
+                            'Thích\\nBình luận', 'Like\\nComment', 'Thích\\nComment',
                             'Tất cả bình luận', 'All comments', 'Phù hợp nhất',
-                            'Mới nhất\n', ' lượt thích\n', ' bình luận\n',
-                            ' likes\n', ' comments\n', 'Thích\nTrả lời', 'Like\nReply'
+                            'Mới nhất\\n', ' lượt thích\\n', ' bình luận\\n',
+                            ' likes\\n', ' comments\\n', 'Thích\\nTrả lời', 'Like\\nReply'
                         ];
                         for (const cutStr of cutStrings) {
                             const idx = fullText.indexOf(cutStr);
