@@ -2,9 +2,9 @@ name: Theo dõi điểm rèn luyện
 
 on:
   schedule:
-    # Chạy mỗi 17 phút. Cú pháp cron là UTC.
+    # Chạy mỗi 20 phút. Cú pháp cron là UTC.
     # Lưu ý: GitHub có thể delay vài phút vào giờ cao điểm, không đảm bảo chính xác tuyệt đối.
-    - cron: "*/17 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch: {}  # cho phép bấm "Run workflow" để chạy thử thủ công
 
 permissions:
@@ -39,5 +39,5 @@ jobs:
           git config user.name "diem-ren-luyen-bot"
           git config user.email "bot@users.noreply.github.com"
           git add seen_posts.json matched_posts.json
-          git diff --cached --quiet || git commit -m "Cập nhật trạng thái theo dõi [skip ci]"
+          git diff --cached --quiet || git commit -m "Cập nhật trạng thái theo dõi tự động"
           git push
