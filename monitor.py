@@ -248,12 +248,30 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
                 let link = '';
                 const anchors = article.querySelectorAll('a[href]');
                 for (const a of anchors) {
-                    const href = a.getAttribute('href') || '';
+                    let href = a.getAttribute('href') || '';
+                    
+                    // Bỏ qua các link hashtag, link ngoài hoặc link profile
+                    if (href.includes('/hashtag/') || href.includes('l.facebook.com/l.php')) {
+                        continue;
+                    }
+
                     if (href.includes('/posts/') || href.includes('/permalink/') ||
-                        href.includes('story_fbid=') || href.includes('/photos/') ||
-                        href.includes('/videos/')) {
+                        href.includes('story_fbid=') || href.includes('fbid=') ||
+                        href.includes('/photos/') || href.includes('/photo/') || href.includes('/photo.php') ||
+                        href.includes('/videos/') || href.includes('/video/') ||
+                        href.includes('/reel/') || href.includes('/events/')) {
+                        
                         link = href.startsWith('/') ? 'https://www.facebook.com' + href : href;
-                        link = link.split('?')[0];
+                        
+                        // Xóa các tham số tracking của Facebook để link gọn hơn nhưng KHÔNG xóa fbid
+                        try {
+                            const urlObj = new URL(link);
+                            urlObj.searchParams.delete('__cft__[0]');
+                            urlObj.searchParams.delete('__tn__');
+                            link = urlObj.toString();
+                        } catch(e) {
+                            link = link.split('?__cft__')[0].split('&__cft__')[0];
+                        }
                         break;
                     }
                 }
@@ -412,6 +430,7 @@ async def main():
                     f"👉 {post['link']}"
                 )
                 send_telegram(message)
+                await asyncio.sleep(2.0)  # Thêm delay 2 giây để tránh bị Telegram rate-limit (Lỗi 429)
                 matched_log.insert(0, {
                     "page": name,
                     "text": post["text"],
