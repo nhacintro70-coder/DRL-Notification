@@ -244,8 +244,9 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
                 postText = postText.trim();
                 if (!postText || postText.length < 10) continue;
 
-                // Tìm link bài viết
-                let link = '';
+                // Tìm link bài viết bằng hệ thống chấm điểm (Scoring System)
+                let bestLink = '';
+                let bestScore = 0;
                 const anchors = article.querySelectorAll('a[href]');
                 for (const a of anchors) {
                     let href = a.getAttribute('href') || '';
@@ -255,28 +256,44 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
                         continue;
                     }
 
-                    if (href.includes('/posts/') || href.includes('/permalink/') ||
-                        href.includes('story_fbid=') || href.includes('fbid=') ||
-                        href.includes('/photos/') || href.includes('/photo/') || href.includes('/photo.php') ||
-                        href.includes('/videos/') || href.includes('/video/') ||
-                        href.includes('/reel/') || href.includes('/events/')) {
+                    let currentScore = 0;
+                    // Điểm 3 (Cao nhất): Link chuẩn trực tiếp đến bài viết, định dạng chia sẻ mới của Facebook
+                    if (href.includes('/posts/') || href.includes('/permalink/') || 
+                        href.includes('story_fbid=') || href.includes('/share/p/') || 
+                        href.includes('/share/v/')) {
+                        currentScore = 3;
+                    } 
+                    // Điểm 2: Bài đăng đặc thù như Reel, Event, Video
+                    else if (href.includes('/reel/') || href.includes('/events/') || 
+                             href.includes('/videos/') || href.includes('/video/')) {
+                        currentScore = 2;
+                    } 
+                    // Điểm 1 (Cấp thấp nhất): Chỉ lấy link từng bức ảnh (photo) nếu không tìm thấy link nào khác
+                    else if (href.includes('/photos/') || href.includes('/photo/') || 
+                             href.includes('/photo.php') || href.includes('fbid=')) {
+                        currentScore = 1;
+                    }
+
+                    if (currentScore > bestScore) {
+                        bestScore = currentScore;
+                        let link = href.startsWith('/') ? 'https://www.facebook.com' + href : href;
                         
-                        link = href.startsWith('/') ? 'https://www.facebook.com' + href : href;
-                        
-                        // Xóa các tham số tracking của Facebook để link gọn hơn nhưng KHÔNG xóa fbid
+                        // Xóa các tham số tracking của Facebook để link gọn hơn nhưng KHÔNG xóa các ID quan trọng
                         try {
                             const urlObj = new URL(link);
                             urlObj.searchParams.delete('__cft__[0]');
                             urlObj.searchParams.delete('__tn__');
-                            link = urlObj.toString();
+                            bestLink = urlObj.toString();
                         } catch(e) {
-                            link = link.split('?__cft__')[0].split('&__cft__')[0];
+                            bestLink = link.split('?__cft__')[0].split('&__cft__')[0];
                         }
-                        break;
                     }
+                    
+                    // Nếu đã tìm thấy link điểm tuyệt đối (3) thì dừng tìm kiếm để lấy link đó
+                    if (bestScore === 3) break;
                 }
 
-                results.push({ text: postText, link: link });
+                results.push({ text: postText, link: bestLink });
                 if (results.length >= 5) break;
             }
             return results;
