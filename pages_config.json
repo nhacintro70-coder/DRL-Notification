@@ -2,32 +2,184 @@
   "_huong_dan": "Mỗi page là 1 object. 'url' dùng dạng www.facebook.com/<username_hoặc_id> để Playwright render JS đầy đủ. Thêm bao nhiêu page tùy bạn.",
   "pages": [
     {
-      "name": "Đoàn Hội Tài Chính",
-      "url": "https://www.facebook.com/doanhoitaichinh"
+      "name": "Đoàn - Hội khoa Công nghệ thông tin kinh doanh",
+      "url": "https://www.facebook.com/BIT.UEH"
+    },
+    {
+      "name": "Đoàn - Hội khoa Du lịch",
+      "url": "https://www.facebook.com/doanhoi.sot.ueh"
+    },
+    {
+      "name": "Đoàn - Hội khoa Kế toán",
+      "url": "https://www.facebook.com/doanhoiketoanĐoàn"
+    },
+    {
+      "name": "Đoàn - Hội khoa Kinh doanh quốc tế - Marketing",
+      "url": "https://www.facebook.com/kqmueh"
+    },
+    {
+      "name": "Đoàn - Hội khoa Kinh tế",
+      "url": "https://www.facebook.com/doanhoikhoakinhte"
+    },
+    {
+      "name": "Đoàn - Hội Khoa Luật UEH",
+      "url": "https://www.facebook.com/doanhoikhoaluatueh"
+    },
+    {
+      "name": "Đoàn - Hội khoa Ngân hàng UEH",
+      "url": "https://www.facebook.com/doanhoikhoanganhang.ueh"
+    },
+    {
+      "name": "Đoàn - Hội Khoa Ngoại Ngữ UEH",
+      "url": "https://www.facebook.com/SFL.KhoaNgoaiNguUEH"
+    },
+    {
+      "name": "Đoàn Khoa Quản Lý Nhà Nước - UEH",
+      "url": "https://www.facebook.com/SOG.UEH"
+    },
+    {
+      "name": "Đoàn Hội Quản trị UEH",
+      "url": "https://www.facebook.com/ueh.doanhoiquantri"
+    },
+    {
+      "name": "Khoa Tài chính - UEH",
+      "url": "https://www.facebook.com/sof.edu.vn"
+    },
+    {
+      "name": "Đoàn - Hội Khoa Toán - Thống Kê UEH",
+      "url": "https://www.facebook.com/doanhoi.ttk"
+    },
+    {
+      "name": "Đoàn - Hội Liên viện CTD",
+      "url": "https://www.facebook.com/CTD.UEH"
+    },
+    {
+      "name": "Đoàn - Hội viện Khoa học chính trị - xã hội UEH",
+      "url": "https://www.facebook.com/LlctUeh"
+    },
+    {
+      "name": "CFE - CLB Tiếng Pháp UEH",
+      "url": "https://www.facebook.com/clbtiengphapueh"
+    },
+    {
+      "name": "BELL UEH",
+      "url": "https://www.facebook.com/bellueh"
+    },
+    {
+      "name": "CLB Guitar Đại Học Kinh Tế TP.HCM (UEHG)",
+      "url": "https://www.facebook.com/uehgclub"
+    },
+    {
+      "name": "CLB Tư Duy Phản Biện UEH - CTC",
+      "url": "https://www.facebook.com/tuduyphanbienUEH"
+    },
+    {
+      "name": "CLB Sinh viên Khởi nghiệp - Dynamic UEH",
+      "url": "https://www.facebook.com/dynamicueh"
+    },
+    {
+      "name": "UEH Volleyball Club",
+      "url": "https://www.facebook.com/UEHVOLLEYBALL"
+    },
+    {
+      "name": "Đội Văn Nghệ Xung Kích UEH",
+      "url": "https://www.facebook.com/vnxkueh"
+    },
+    {
+      "name": "Đội Cộng Tác Viên UEH",
+      "url": "https://www.facebook.com/CTVUEH"
+    },
+    {
+      "name": "CLB Chuyện To Nhỏ",
+      "url": "https://www.facebook.com/chuyentonho"
+    },
+    {
+      "name": "Clb Giai Điệu Trẻ",
+      "url": "https://www.facebook.com/clbgiaidieutre"
+    },
+    {
+      "name": "CLB Võ Thuật ĐH Kinh Tế",
+      "url": "https://www.facebook.com/VothuatDHKT"
+    },
+    {
+      "name": "CLB DÂN CA UEH",
+      "url": "https://www.facebook.com/clbdanca.ueh"
+    },
+    {
+      "name": "Đội Công tác xã hội Đại học Kinh tế TP. Hồ Chí Minh",
+      "url": "https://www.facebook.com/congtacxahoi"
+    },
+    {
+      "name": "S Communications (Nhóm truyền thông sinh viên)",
+      "url": "https://www.facebook.com/scoms.ueh"
     },
     {
       "name": "CLB Kế Toán - Kiểm toán A2C",
       "url": "https://www.facebook.com/CLBA2C"
     },
     {
-      "name": "Khoa Tài Chính UEH",
-      "url": "https://www.facebook.com/sof.edu.vn"
+      "name": "CLB Nhân sự - Khởi nghiệp",
+      "url": "https://www.facebook.com/ClbNhanSuKhoiNghiep.ueh"
     },
     {
-      "name": "SFR - Nhóm sinh viên nghiên cứu tài chính",
-      "url": "https://www.facebook.com/NhomSFR.ueh"
+      "name": "CLB Thương Mại",
+      "url": "https://www.facebook.com/ic.ueh"
+    },
+    {
+      "name": "Câu lạc bộ Công nghệ Kinh tế - ET Club",
+      "url": "https://www.facebook.com/ETClub.UEH"
+    },
+    {
+      "name": "HuReA Club",
+      "url": "https://www.facebook.com/HuReAClub/"
+    },
+    {
+      "name": "CLB Lý Luận Trẻ UEH",
+      "url": "https://www.facebook.com/llt.ueh"
+    },
+    {
+      "name": "Travelgroup UEH",
+      "url": "https://www.facebook.com/travelgroup.ueh/"
+    },
+    {
+      "name": "TaxGroup - Nhóm Sinh Viên Nghiên Cứu Thuế",
+      "url": "https://www.facebook.com/TaxGroup.UEH/"
+    },
+    {
+      "name": "APPLE Club - UEH",
+      "url": "https://www.facebook.com/AppleUEH"
+    },
+    {
+      "name": "SSG - Hỗ Trợ Sinh Viên",
+      "url": "https://www.facebook.com/ssg.ueh.edu.vn/"
     },
     {
       "name": "CLB Chứng Khoán SCUE",
       "url": "https://www.facebook.com/clbscue"
     },
     {
-      "name": "CLBBatdongsanREC",
+      "name": "CLB Bất động sản REC",
       "url": "https://www.facebook.com/CLBBatdongsanRECUEH"
     },
     {
-      "name": "Tuấn Tú Khôi Ngô",
-      "url": "https://www.facebook.com/profile.php?id=100089346318168"
+      "name": "Câu lạc bộ Nghiên cứu Kinh tế Trẻ YoRE",
+      "url": "https://www.facebook.com/clbyore/"
+    },
+    {
+      "name": "CLB PHÁP LÝ",
+      "url": "https://www.facebook.com/vietnam.legal.club"
+    },
+    {
+      "name": "International Business Club",
+      "url": "https://www.facebook.com/ueh.ibc"
+    },
+    {
+      "name": "Margroup (Nhóm sinh viên nghiên cứu marketing)",
+      "url": "https://www.facebook.com/margroup.ueh"
+    },
+    {
+      "name": "Youth UEH Community",
+      "url": "https://www.facebook.com/youthueh"
     }
   ],
   "keywords": [
@@ -45,6 +197,9 @@
     "hệ thống mã vạch UEH",
     "ghi nhận mssv",
     "hệ thống mã vạch",
-    "ghi nhận trên hệ thống mã vạch"
+    "ghi nhận trên hệ thống mã vạch",
+    "ghi nhận rèn luyện sinh viên",
+    "rèn luyện sinh viên",
+    "hệ thống DRS"
   ]
 }
