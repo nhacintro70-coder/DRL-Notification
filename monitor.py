@@ -428,12 +428,14 @@ async def main():
         finally:
             await init_page.close()
 
-        # Duyệt song song các fanpage với Semaphore(3)
-        sem = asyncio.Semaphore(3)
+        # Duyệt TỪNG TRANG MỘT (Semaphore = 1) để tránh bị Facebook nghi ngờ spam và chặn hiển thị bài viết
+        sem = asyncio.Semaphore(1)
         results = {}
         
-        tasks = [scrape_worker(sem, context, pg, results) for pg in pages]
-        await asyncio.gather(*tasks)
+        for pg in pages:
+            await scrape_worker(sem, context, pg, results)
+            await asyncio.sleep(3.0)  # Nghỉ 3 giây giữa các trang để giống người thật
+        
         await browser.close()
 
     # So khớp từ khóa và gửi Telegram tuần tự (để tránh bị block gửi tin nhắn dồn dập)
