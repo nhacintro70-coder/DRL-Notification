@@ -197,7 +197,24 @@ body {
   opacity: 1;
 }
 
-/* Active Badge */
+/* Style cho phần số lượng bên trong tab và chip */
+.tab-chip span, .panel-chip span {
+  opacity: 0.75;
+  font-size: 0.9em;
+  font-weight: 400;
+}
+
+/* Active Badge & Multi-select */
+.active-badges-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: -0.5rem; /* Kéo lên gần nút Lọc theo đơn vị một chút */
+  animation: fadeIn 0.3s ease-out;
+}
+
 .active-badge {
   display: inline-flex;
   align-items: center;
@@ -208,7 +225,7 @@ body {
   padding: 4px 10px 4px 14px;
   font-size: 12px;
   color: #7dd3fc;
-  animation: fadeIn 0.3s;
+  animation: fadeIn 0.2s;
 }
 
 .active-badge .remove-btn {
@@ -228,6 +245,22 @@ body {
 
 .active-badge .remove-btn:hover {
   opacity: 1;
+}
+
+.clear-all-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+  font-family: inherit;
+}
+
+.clear-all-btn:hover {
+  color: #ef4444;
 }
 
 /* ======================================================= */

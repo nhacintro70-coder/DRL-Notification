@@ -69,7 +69,7 @@ const CATEGORIES = [
 
 function App() {
   const [activeTab, setActiveTab] = useState('Tất cả')
-  const [activeClub, setActiveClub] = useState(null)
+  const [activeClubs, setActiveClubs] = useState([]) // Chuyển thành Array để Multi-select
   const [isPanelOpen, setIsPanelOpen] = useState(false)
   
   const panelRef = useRef(null)
@@ -92,14 +92,22 @@ function App() {
   // Logic đổi tab
   const handleSelectTab = (tabName) => {
     setActiveTab(tabName)
-    setActiveClub(null) // Đổi tab thì reset club
+    setActiveClubs([]) // Đổi tab thì reset mảng club
     setIsPanelOpen(false)
   }
 
-  // Logic chọn club
+  // Logic chọn club (Multi-select)
   const handleSelectClub = (clubName) => {
-    setActiveClub(clubName)
-    setIsPanelOpen(false)
+    if (clubName === null) {
+      setActiveClubs([]) // Chọn 'Tất cả trong nhóm' -> Xóa hết chọn
+    } else {
+      setActiveClubs(prev => 
+        prev.includes(clubName) 
+          ? prev.filter(c => c !== clubName) // Nếu đã chọn thì bỏ chọn
+          : [...prev, clubName] // Nếu chưa chọn thì thêm vào
+      )
+    }
+    // Panel KHÔNG tự đóng để user chọn tiếp nhiều cái
   }
 
   // Lấy ra object Category hiện tại dựa trên activeTab
@@ -110,13 +118,13 @@ function App() {
     if (activeTab === 'Tất cả') {
       return posts
     }
-    if (activeClub) {
-      // Đã chọn một CLB cụ thể trong nhóm
-      return posts.filter(post => post.page === activeClub)
+    if (activeClubs.length > 0) {
+      // Đã chọn một HOẶC nhiều CLB cụ thể trong nhóm
+      return posts.filter(post => activeClubs.includes(post.page))
     }
     // Đã chọn một nhóm nhưng chưa chọn CLB cụ thể -> Hiện toàn bộ bài trong nhóm đó
     return posts.filter(post => currentCategoryObj?.pages.includes(post.page))
-  }, [posts, activeTab, activeClub, currentCategoryObj])
+  }, [posts, activeTab, activeClubs, currentCategoryObj])
 
 
   return (
@@ -137,70 +145,83 @@ function App() {
               className={`tab-chip ${activeTab === 'Tất cả' ? 'active' : ''}`}
               onClick={() => handleSelectTab('Tất cả')}
             >
-              Tất cả
+              Tất cả <span>({posts.length})</span>
             </button>
-            {CATEGORIES.map((cat, idx) => (
-              <button 
-                key={idx}
-                className={`tab-chip ${activeTab === cat.name ? 'active' : ''}`}
-                onClick={() => handleSelectTab(cat.name)}
-              >
-                {cat.name}
-              </button>
-            ))}
+            {CATEGORIES.map((cat, idx) => {
+              // Tính số bài viết của nhóm này
+              const catPostCount = posts.filter(p => cat.pages.includes(p.page)).length;
+              return (
+                <button 
+                  key={idx}
+                  className={`tab-chip ${activeTab === cat.name ? 'active' : ''}`}
+                  onClick={() => handleSelectTab(cat.name)}
+                >
+                  {cat.name} <span>({catPostCount})</span>
+                </button>
+              )
+            })}
           </div>
 
           {/* Tầng 2: Ghost Pill Trigger & Floating Panel */}
           {activeTab !== 'Tất cả' && (
             <div className="level-2-filter">
               
-              {!activeClub ? (
-                // Nếu chưa chọn CLB, hiện nút ghost pill
-                <div className="filter-trigger-wrap" ref={panelRef}>
-                  <button 
-                    className="filter-trigger"
-                    onClick={() => setIsPanelOpen(!isPanelOpen)}
-                  >
-                    <Filter size={14} /> Lọc theo đơn vị <ChevronDown size={14} />
-                  </button>
+              <div className="filter-trigger-wrap" ref={panelRef}>
+                <button 
+                  className="filter-trigger"
+                  onClick={() => setIsPanelOpen(!isPanelOpen)}
+                >
+                  <Filter size={14} /> Lọc theo đơn vị <ChevronDown size={14} />
+                </button>
 
-                  {/* Floating Panel (Absolute) - Chip Grid */}
-                  {isPanelOpen && currentCategoryObj && (
-                    <div className="floating-panel">
-                      <div className="panel-chips">
-                        <button
-                          className="panel-chip active"
-                          onClick={() => handleSelectClub(null)}
-                        >
-                          Tất cả trong nhóm
-                        </button>
-                        
-                        {currentCategoryObj.pages.map((page, idx) => {
-                          const postCount = posts.filter(p => p.page === page).length;
-                          return (
-                            <button
-                              key={idx}
-                              className={`panel-chip ${postCount === 0 ? 'inactive' : ''}`}
-                              onClick={() => handleSelectClub(page)}
-                            >
-                              {page} {postCount > 0 && <span>({postCount})</span>}
-                            </button>
-                          )
-                        })}
-                      </div>
+                {/* Floating Panel (Absolute) - Chip Grid */}
+                {isPanelOpen && currentCategoryObj && (
+                  <div className="floating-panel">
+                    <div className="panel-chips">
+                      <button
+                        className={`panel-chip ${activeClubs.length === 0 ? 'active' : ''}`}
+                        onClick={() => handleSelectClub(null)}
+                      >
+                        Tất cả trong nhóm <span>({posts.filter(p => currentCategoryObj.pages.includes(p.page)).length})</span>
+                      </button>
+                      
+                      {currentCategoryObj.pages.map((page, idx) => {
+                        const postCount = posts.filter(p => p.page === page).length;
+                        const isSelected = activeClubs.includes(page);
+                        return (
+                          <button
+                            key={idx}
+                            className={`panel-chip ${isSelected ? 'active' : ''} ${postCount === 0 ? 'inactive' : ''}`}
+                            onClick={() => handleSelectClub(page)}
+                          >
+                            {page} <span>({postCount})</span>
+                          </button>
+                        )
+                      })}
                     </div>
-                  )}
-                </div>
-              ) : (
-                // Nếu ĐÃ chọn CLB, hiện Active Badge có nút tắt (X)
-                <span className="active-badge">
-                  {activeClub}
-                  <button className="remove-btn" onClick={() => setActiveClub(null)} title="Bỏ lọc CLB này">
+                  </div>
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* Active Badges (Hiển thị các đơn vị đã chọn) */}
+          {activeClubs.length > 0 && (
+            <div className="active-badges-container">
+              {activeClubs.map(club => (
+                <span key={club} className="active-badge">
+                  {club}
+                  <button className="remove-btn" onClick={() => handleSelectClub(club)} title="Bỏ lọc CLB này">
                     <X size={14} />
                   </button>
                 </span>
+              ))}
+              {activeClubs.length > 1 && (
+                <button className="clear-all-btn" onClick={() => handleSelectClub(null)}>
+                  Xóa tất cả
+                </button>
               )}
-
             </div>
           )}
 
