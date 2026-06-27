@@ -1,5 +1,5 @@
-import { useState, useMemo } from 'react'
-import { GraduationCap, Filter, FolderTree, ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react'
+import { useState, useMemo, useRef, useEffect } from 'react'
+import { GraduationCap, Filter, ChevronDown, X } from 'lucide-react'
 import PostCard from './PostCard'
 import postsData from './matched_posts.json'
 
@@ -68,32 +68,56 @@ const CATEGORIES = [
 ]
 
 function App() {
-  const [selectedPage, setSelectedPage] = useState('Tất cả')
-  const [isFilterOpen, setIsFilterOpen] = useState(false)
-  const [expandedCategories, setExpandedCategories] = useState({
-    0: true,
-    1: true,
-    2: true
-  })
+  const [activeTab, setActiveTab] = useState('Tất cả')
+  const [activeClub, setActiveClub] = useState(null)
+  const [isPanelOpen, setIsPanelOpen] = useState(false)
+  
+  const panelRef = useRef(null)
 
-  const toggleCategory = (idx) => {
-    setExpandedCategories(prev => ({
-      ...prev,
-      [idx]: !prev[idx]
-    }))
-  }
+  // Đóng panel khi click ra ngoài
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (panelRef.current && !panelRef.current.contains(event.target)) {
+        setIsPanelOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+    }
+  }, [])
 
   const posts = Array.isArray(postsData) ? postsData : []
 
-  const filteredPosts = useMemo(() => {
-    if (selectedPage === 'Tất cả') return posts
-    return posts.filter(post => post.page === selectedPage)
-  }, [posts, selectedPage])
-
-  const handleSelectPage = (page) => {
-    setSelectedPage(page)
-    setIsFilterOpen(false) // Tự động đóng dropdown sau khi chọn
+  // Logic đổi tab
+  const handleSelectTab = (tabName) => {
+    setActiveTab(tabName)
+    setActiveClub(null) // Đổi tab thì reset club
+    setIsPanelOpen(false)
   }
+
+  // Logic chọn club
+  const handleSelectClub = (clubName) => {
+    setActiveClub(clubName)
+    setIsPanelOpen(false)
+  }
+
+  // Lấy ra object Category hiện tại dựa trên activeTab
+  const currentCategoryObj = CATEGORIES.find(c => c.name === activeTab)
+
+  // Lọc dữ liệu kết quả cuối cùng
+  const filteredPosts = useMemo(() => {
+    if (activeTab === 'Tất cả') {
+      return posts
+    }
+    if (activeClub) {
+      // Đã chọn một CLB cụ thể trong nhóm
+      return posts.filter(post => post.page === activeClub)
+    }
+    // Đã chọn một nhóm nhưng chưa chọn CLB cụ thể -> Hiện toàn bộ bài trong nhóm đó
+    return posts.filter(post => currentCategoryObj?.pages.includes(post.page))
+  }, [posts, activeTab, activeClub, currentCategoryObj])
+
 
   return (
     <div className="app-container">
@@ -104,71 +128,76 @@ function App() {
         </h1>
         <p>Cập nhật tự động thông tin điểm rèn luyện mới nhất từ các Fanpage</p>
 
-        {/* Vùng Toggle Bộ lọc */}
-        <div className="filter-wrapper">
-          <button 
-            className="filter-toggle-btn" 
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <div className="filter-toggle-left">
-              <Filter size={20} />
-              <span>Đang hiển thị: <strong className="text-glow">{selectedPage}</strong></span>
-            </div>
-            {isFilterOpen ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </button>
+        {/* Khu vực Filter 2 Tầng */}
+        <div className="filter-system">
+          
+          {/* Tầng 1: Tab Chips */}
+          <div className="tab-chips-wrap">
+            <button 
+              className={`tab-chip ${activeTab === 'Tất cả' ? 'active' : ''}`}
+              onClick={() => handleSelectTab('Tất cả')}
+            >
+              Tất cả
+            </button>
+            {CATEGORIES.map((cat, idx) => (
+              <button 
+                key={idx}
+                className={`tab-chip ${activeTab === cat.name ? 'active' : ''}`}
+                onClick={() => handleSelectTab(cat.name)}
+              >
+                {cat.name}
+              </button>
+            ))}
+          </div>
 
-          {/* Bộ lọc Fanpage theo nhóm (chỉ hiện khi isFilterOpen = true) */}
-          {isFilterOpen && (
-            <div className="filter-container">
-              <div className="filter-all-wrapper">
-                <button
-                  className={`filter-chip ${selectedPage === 'Tất cả' ? 'active' : ''}`}
-                  onClick={() => handleSelectPage('Tất cả')}
-                >
-                  {selectedPage === 'Tất cả' && <CheckCircle2 size={16} />}
-                  Hiển thị Tất cả
-                </button>
-              </div>
+          {/* Tầng 2: Nút Lọc chi tiết & Floating Panel */}
+          {activeTab !== 'Tất cả' && (
+            <div className="level-2-filter">
+              
+              {!activeClub ? (
+                // Nếu chưa chọn CLB, hiện nút sổ xuống
+                <div className="filter-trigger-wrap" ref={panelRef}>
+                  <button 
+                    className="detail-filter-btn"
+                    onClick={() => setIsPanelOpen(!isPanelOpen)}
+                  >
+                    Lọc chi tiết <ChevronDown size={14} />
+                  </button>
 
-              <div className="filter-groups">
-                {CATEGORIES.map((category, idx) => (
-                  <div key={idx} className="filter-group">
-                    <button 
-                      className="filter-group-header" 
-                      onClick={() => toggleCategory(idx)}
-                    >
-                      <h3 className="filter-group-title">
-                        <FolderTree size={16} />
-                        {category.name}
-                      </h3>
-                      {expandedCategories[idx] ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                    
-                    {expandedCategories[idx] && (
-                      <div className="filter-chips">
-                        {category.pages.map((page, index) => {
+                  {/* Floating Panel (Absolute) */}
+                  {isPanelOpen && currentCategoryObj && (
+                    <div className="floating-panel">
+                      <div className="panel-title">Chọn Đơn vị cụ thể:</div>
+                      <div className="panel-clubs">
+                        {currentCategoryObj.pages.map((page, idx) => {
                           const postCount = posts.filter(p => p.page === page).length;
-                          const isActive = selectedPage === page;
                           return (
                             <button
-                              key={index}
-                              className={`filter-chip ${isActive ? 'active' : ''} ${postCount === 0 && !isActive ? 'inactive-chip' : ''}`}
-                              onClick={() => handleSelectPage(page)}
-                              title={postCount === 0 ? "Hiện chưa có bài viết mới" : `${postCount} bài viết`}
+                              key={idx}
+                              className={`panel-club-item ${postCount === 0 ? 'inactive' : ''}`}
+                              onClick={() => handleSelectClub(page)}
                             >
-                              {isActive && <CheckCircle2 size={16} />}
-                              {page}
-                              {postCount > 0 && <span className="chip-badge">{postCount}</span>}
+                              {page} {postCount > 0 && <span>({postCount})</span>}
                             </button>
                           )
                         })}
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Nếu ĐÃ chọn CLB, hiện Badge có nút tắt (X)
+                <span className="active-badge">
+                  {activeClub}
+                  <button onClick={() => setActiveClub(null)} title="Bỏ lọc CLB này">
+                    <X size={14} />
+                  </button>
+                </span>
+              )}
+
             </div>
           )}
+
         </div>
       </header>
 
@@ -185,7 +214,7 @@ function App() {
           </div>
         ) : (
           <div className="no-results">
-            <p>Hiện tại không có thông báo điểm rèn luyện nào từ <strong>{selectedPage}</strong>.</p>
+            <p>Hiện tại không có thông báo điểm rèn luyện nào phù hợp.</p>
           </div>
         )}
       </main>

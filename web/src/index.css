@@ -64,191 +64,189 @@ body {
   font-weight: 400;
 }
 
-/* Filter Wrapper & Toggle Button */
-.filter-wrapper {
-  max-width: 1000px;
-  margin: 2.5rem auto 1rem;
+/* ==================== FILTER 2 TẦNG ==================== */
+
+.filter-system {
+  margin: 2rem auto;
+  max-width: 900px;
   animation: fadeInUp 0.8s ease-out 0.2s both;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  position: relative; /* Thêm relative để làm gốc cho dropdown nổi */
-  z-index: 100; /* Đảm bảo wrapper nằm trên các nội dung khác */
+  gap: 1.5rem;
 }
 
-.filter-toggle-btn {
-  background: rgba(17, 24, 39, 0.7);
-  border: 1px solid var(--accent-color);
-  color: var(--text-primary);
-  padding: 1rem 1.5rem;
-  border-radius: 16px;
+/* Tầng 1 - Tab Chips Wrap */
+.tab-chips-wrap {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+  padding-bottom: 0.5rem;
+}
+
+.tab-chip {
+  background: rgba(17, 24, 39, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  padding: 8px 18px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
   font-family: inherit;
-  font-size: 1.05rem;
   font-weight: 500;
+  backdrop-filter: var(--glass-blur);
+}
+
+.tab-chip:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.tab-chip.active {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.1);
+}
+
+/* Tầng 2 - Lọc chi tiết */
+.level-2-filter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px; /* Tránh giật layout khi badge xuất hiện */
+}
+
+.filter-trigger-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.detail-filter-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px dashed rgba(255, 255, 255, 0.3);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
   cursor: pointer;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  width: 100%;
-  max-width: 500px;
-  transition: all 0.3s ease;
-  backdrop-filter: var(--glass-blur);
-  box-shadow: 0 4px 15px rgba(0,0,0,0.2), 0 0 10px rgba(56, 189, 248, 0.2);
+  gap: 6px;
+  transition: all 0.2s;
 }
 
-.filter-toggle-btn:hover {
-  background: rgba(30, 41, 59, 0.9);
-  box-shadow: 0 4px 20px rgba(0,0,0,0.3), 0 0 15px var(--accent-glow);
+.detail-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
 }
 
-.filter-toggle-left {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-/* Filters Container (Floating Dropdown) */
-.filter-container {
+/* Floating Panel */
+.floating-panel {
   position: absolute;
-  top: calc(100% + 15px);
-  left: 0;
-  right: 0;
-  width: 100%;
-  max-width: 1000px;
-  margin: 0 auto;
-  background: rgba(17, 24, 39, 0.85); /* Tăng độ đậm để che nội dung bên dưới */
-  border-radius: 20px;
-  border: 1px solid var(--accent-color); /* Viền nổi bật hơn */
-  padding: 1.5rem;
-  backdrop-filter: blur(25px); /* Tăng độ mờ */
-  -webkit-backdrop-filter: blur(25px);
-  animation: fadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(56, 189, 248, 0.1); /* Bóng to để nổi lên trên */
-  max-height: 70vh; /* Giới hạn chiều cao */
-  overflow-y: auto; /* Cuộn bên trong nếu quá dài */
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(17, 24, 39, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 16px;
+  min-width: 320px;
+  max-width: 90vw; /* Không vượt quá màn hình mobile */
+  max-height: 350px;
+  overflow-y: auto;
+  box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  animation: fadeIn 0.2s ease-out;
+  text-align: left;
 }
 
-/* Custom scrollbar cho filter container */
-.filter-container::-webkit-scrollbar {
-  width: 6px;
+/* Custom scrollbar cho floating panel */
+.floating-panel::-webkit-scrollbar { width: 5px; }
+.floating-panel::-webkit-scrollbar-track { background: transparent; }
+.floating-panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+
+.panel-title {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.05);
 }
-.filter-container::-webkit-scrollbar-track {
+
+.panel-clubs {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.panel-club-item {
   background: transparent;
-}
-.filter-container::-webkit-scrollbar-thumb {
-  background: rgba(255,255,255,0.2);
-  border-radius: 10px;
-}
-
-.filter-title {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.5rem;
-  color: var(--accent-color);
-  font-size: 1.1rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-}
-
-.filter-all-wrapper {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 2rem;
-  padding-bottom: 1.5rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}
-
-.filter-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-}
-
-.filter-group {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.filter-group-header {
+  border: none;
+  color: var(--text-primary);
+  text-align: left;
+  padding: 8px 10px;
+  font-family: inherit;
+  font-size: 13.5px;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.15s;
   display: flex;
   justify-content: space-between;
+}
+
+.panel-club-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--accent-color);
+}
+
+.panel-club-item.inactive {
+  opacity: 0.5;
+}
+.panel-club-item.inactive:hover {
+  opacity: 1;
+}
+
+/* Active Badge */
+.active-badge {
+  display: inline-flex;
   align-items: center;
-  width: 100%;
+  gap: 8px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid var(--accent-color);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: #7dd3fc;
+  box-shadow: 0 0 15px rgba(56, 189, 248, 0.15);
+  animation: fadeIn 0.3s;
+}
+
+.active-badge button {
   background: none;
   border: none;
-  padding: 0.5rem;
+  color: inherit;
   cursor: pointer;
-  color: var(--text-secondary);
-  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  border-radius: 50%;
   transition: background 0.2s;
 }
 
-.filter-group-header:hover {
-  background: rgba(255, 255, 255, 0.05);
+.active-badge button:hover {
+  background: rgba(255, 255, 255, 0.2);
 }
 
-.filter-group-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: inherit;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-}
-
-.filter-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  justify-content: flex-start;
-}
-
-.filter-chip {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  font-family: inherit;
-  font-weight: 500;
-  transition: all 0.3s ease;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.filter-chip.inactive-chip {
-  opacity: 0.5;
-}
-
-.filter-chip:hover {
-  background: rgba(255, 255, 255, 0.1);
-  transform: translateY(-2px);
-  opacity: 1;
-}
-
-.filter-chip.active {
-  background: var(--accent-color);
-  color: #0f172a;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 15px var(--accent-glow);
-  opacity: 1;
-}
-
-.chip-badge {
-  background: #ef4444;
-  color: white;
-  font-size: 0.75rem;
-  font-weight: bold;
-  padding: 0.1rem 0.4rem;
-  border-radius: 10px;
-}
+/* ======================================================= */
 
 /* Post Grid */
 .post-grid {
@@ -491,8 +489,24 @@ body {
 }
 
 /* Responsive */
-@media (max-width: 640px) {
+@media (max-width: 860px) {
   .header h1 { font-size: 2.2rem; }
   .post-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .app-container { padding: 1.5rem 1rem; }
+  
+  /* Cập nhật cho Mobile theo filter_spec */
+  .tab-chips-wrap {
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 12px; /* Khoảng trống cho scroll */
+  }
+  .tab-chips-wrap::-webkit-scrollbar { display: none; }
+  
+  .floating-panel {
+    width: calc(100vw - 32px);
+    left: 50%;
+    transform: translateX(-50%);
+  }
 }
