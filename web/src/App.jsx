@@ -128,7 +128,7 @@ function App() {
         </h1>
         <p>Cập nhật tự động thông tin điểm rèn luyện mới nhất từ các Fanpage</p>
 
-        {/* Khu vực Filter 2 Tầng */}
+        {/* Khu vực Filter 2 Tầng (Spec v2) */}
         <div className="filter-system">
           
           {/* Tầng 1: Tab Chips */}
@@ -150,31 +150,37 @@ function App() {
             ))}
           </div>
 
-          {/* Tầng 2: Nút Lọc chi tiết & Floating Panel */}
+          {/* Tầng 2: Ghost Pill Trigger & Floating Panel */}
           {activeTab !== 'Tất cả' && (
             <div className="level-2-filter">
               
               {!activeClub ? (
-                // Nếu chưa chọn CLB, hiện nút sổ xuống
+                // Nếu chưa chọn CLB, hiện nút ghost pill
                 <div className="filter-trigger-wrap" ref={panelRef}>
                   <button 
-                    className="detail-filter-btn"
+                    className="filter-trigger"
                     onClick={() => setIsPanelOpen(!isPanelOpen)}
                   >
-                    Lọc chi tiết <ChevronDown size={14} />
+                    <Filter size={14} /> Lọc theo đơn vị <ChevronDown size={14} />
                   </button>
 
-                  {/* Floating Panel (Absolute) */}
+                  {/* Floating Panel (Absolute) - Chip Grid */}
                   {isPanelOpen && currentCategoryObj && (
                     <div className="floating-panel">
-                      <div className="panel-title">Chọn Đơn vị cụ thể:</div>
-                      <div className="panel-clubs">
+                      <div className="panel-chips">
+                        <button
+                          className="panel-chip active"
+                          onClick={() => handleSelectClub(null)}
+                        >
+                          Tất cả trong nhóm
+                        </button>
+                        
                         {currentCategoryObj.pages.map((page, idx) => {
                           const postCount = posts.filter(p => p.page === page).length;
                           return (
                             <button
                               key={idx}
-                              className={`panel-club-item ${postCount === 0 ? 'inactive' : ''}`}
+                              className={`panel-chip ${postCount === 0 ? 'inactive' : ''}`}
                               onClick={() => handleSelectClub(page)}
                             >
                               {page} {postCount > 0 && <span>({postCount})</span>}
@@ -186,10 +192,10 @@ function App() {
                   )}
                 </div>
               ) : (
-                // Nếu ĐÃ chọn CLB, hiện Badge có nút tắt (X)
+                // Nếu ĐÃ chọn CLB, hiện Active Badge có nút tắt (X)
                 <span className="active-badge">
                   {activeClub}
-                  <button onClick={() => setActiveClub(null)} title="Bỏ lọc CLB này">
+                  <button className="remove-btn" onClick={() => setActiveClub(null)} title="Bỏ lọc CLB này">
                     <X size={14} />
                   </button>
                 </span>
