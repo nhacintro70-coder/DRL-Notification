@@ -40,11 +40,12 @@ body {
   padding: 3rem 1.5rem;
 }
 
-/* Header */
 .header {
   text-align: center;
   margin-bottom: 2rem;
   animation: fadeInDown 0.8s ease-out;
+  position: relative;
+  z-index: 50; /* Quan trọng: Đảm bảo header và dropdown luôn nằm trên danh sách bài viết */
 }
 
 .header h1 {
@@ -87,9 +88,9 @@ body {
   background: transparent;
   border: 1px solid rgba(255,255,255,0.15);
   border-radius: 999px;
-  padding: 6px 16px;
+  padding: 8px 20px; /* Tăng padding */
   color: rgba(255,255,255,0.55);
-  font-size: 13px;
+  font-size: 14.5px; /* Tăng size chữ */
   cursor: pointer;
   white-space: nowrap;
   font-family: inherit;
@@ -125,9 +126,9 @@ body {
   background: transparent;
   border: 1px solid rgba(255,255,255,0.18);
   border-radius: 999px; /* Cùng pill shape với tab */
-  padding: 5px 14px;
+  padding: 6px 18px; /* Tăng padding */
   color: rgba(255,255,255,0.5);
-  font-size: 12px;
+  font-size: 13.5px; /* Tăng size chữ */
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -144,19 +145,39 @@ body {
 /* Floating Panel */
 .floating-panel {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 8px);
   left: 50%;
   transform: translateX(-50%);
   z-index: 100;
-  background: #1e2235;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 12px;
-  padding: 16px 20px;
+  
+  /* Premium Solid Elevated Surface (Chuẩn Vercel/Linear) */
+  background: #0f111a; /* Nền tối đặc không trong suốt để đảm bảo độ tương phản */
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 
+    0 4px 6px -1px rgba(0, 0, 0, 0.5), 
+    0 24px 48px -12px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.02) inset; /* Bóng đổ nhiều lớp tạo độ sâu cực xịn */
+    
+  border-radius: 16px;
+  padding: 18px 24px;
   width: max-content;
-  max-width: 850px; /* Tăng max-width để hiện nhiều cột */
-  box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-  animation: fadeIn 0.2s ease-out;
-  text-align: center; /* Canh giữa cho đẹp */
+  max-width: 850px;
+  
+  /* Animation đóng mở xịn xò (Vercel style) */
+  transform-origin: top center;
+  animation: menuAppear 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  text-align: center;
+}
+
+@keyframes menuAppear {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
 }
 
 .panel-chips {

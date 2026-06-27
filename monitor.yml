@@ -5,7 +5,12 @@ on:
     # Chạy mỗi 20 phút. Cú pháp cron là UTC.
     # Lưu ý: GitHub có thể delay vài phút vào giờ cao điểm, không đảm bảo chính xác tuyệt đối.
     - cron: "*/20 * * * *"
-  workflow_dispatch: {}  # cho phép bấm "Run workflow" để chạy thử thủ công
+  workflow_dispatch: {}  # cho phép bấm "Run workflow" để chạy thử thủ công hoặc gọi từ API ngoài
+
+# Tránh chạy song song 2 job cùng lúc nếu bị queue chồng
+concurrency:
+  group: monitor-check
+  cancel-in-progress: false
 
 permissions:
   contents: write  # cần quyền này để commit lại file trạng thái
@@ -13,6 +18,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15  # tự kill nếu treo quá 15 phút, tránh chiếm slot
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -38,6 +44,6 @@ jobs:
         run: |
           git config user.name "diem-ren-luyen-bot"
           git config user.email "bot@users.noreply.github.com"
-          git add seen_posts.json matched_posts.json
+          git add seen_posts.json web/src/matched_posts.json
           git diff --cached --quiet || git commit -m "Cập nhật trạng thái theo dõi tự động"
           git push
