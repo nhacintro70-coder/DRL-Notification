@@ -28,7 +28,7 @@ from playwright.async_api import async_playwright
 
 CONFIG_PATH = Path("pages_config.json")
 STATE_PATH = Path("seen_posts.json")
-MATCHED_LOG_PATH = Path("matched_posts.json")  # dùng cho website sau này
+MATCHED_LOG_PATH = Path("web/src/matched_posts.json")  # dùng cho website sau này
 
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 TELEGRAM_CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID", "")
@@ -469,6 +469,7 @@ async def main():
         seen_state[name] = updated_seen[-MAX_SEEN_PER_PAGE:]
 
     save_json(STATE_PATH, seen_state)
+    MATCHED_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
     save_json(MATCHED_LOG_PATH, matched_log[:200])  # giữ tối đa 200 bài gần nhất
 
     print(f"\n=== Hoàn tất. {total_new} bài mới khớp từ khóa. ===")
