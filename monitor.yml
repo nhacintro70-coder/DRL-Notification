@@ -2,9 +2,9 @@ name: Theo dõi điểm rèn luyện
 
 on:
   schedule:
-    # Chạy mỗi 17 phút. Cú pháp cron là UTC.
+    # Chạy mỗi 20 phút. Cú pháp cron là UTC.
     # Lưu ý: GitHub có thể delay vài phút vào giờ cao điểm, không đảm bảo chính xác tuyệt đối.
-    - cron: "*/17 * * * *"
+    - cron: "*/20 * * * *"
   workflow_dispatch: {}  # cho phép bấm "Run workflow" để chạy thử thủ công
 
 permissions:
