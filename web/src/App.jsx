@@ -92,10 +92,7 @@ function App() {
 
   const handleSelectPage = (page) => {
     setSelectedPage(page)
-    // Tự động đóng bộ lọc khi đã chọn trên điện thoại
-    if (window.innerWidth < 768) {
-      setIsFilterOpen(false)
-    }
+    setIsFilterOpen(false) // Tự động đóng dropdown sau khi chọn
   }
 
   return (

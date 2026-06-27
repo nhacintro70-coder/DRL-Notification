@@ -72,6 +72,8 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
+  position: relative; /* Thêm relative để làm gốc cho dropdown nổi */
+  z-index: 100; /* Đảm bảo wrapper nằm trên các nội dung khác */
 }
 
 .filter-toggle-btn {
@@ -105,16 +107,37 @@ body {
   gap: 0.75rem;
 }
 
-/* Filters Container */
+/* Filters Container (Floating Dropdown) */
 .filter-container {
+  position: absolute;
+  top: calc(100% + 15px);
+  left: 0;
+  right: 0;
   width: 100%;
-  margin-top: 1rem;
-  background: rgba(17, 24, 39, 0.4);
+  max-width: 1000px;
+  margin: 0 auto;
+  background: rgba(17, 24, 39, 0.85); /* Tăng độ đậm để che nội dung bên dưới */
   border-radius: 20px;
-  border: 1px solid var(--card-border);
+  border: 1px solid var(--accent-color); /* Viền nổi bật hơn */
   padding: 1.5rem;
-  backdrop-filter: var(--glass-blur);
-  animation: fadeIn 0.4s ease-out;
+  backdrop-filter: blur(25px); /* Tăng độ mờ */
+  -webkit-backdrop-filter: blur(25px);
+  animation: fadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(56, 189, 248, 0.1); /* Bóng to để nổi lên trên */
+  max-height: 70vh; /* Giới hạn chiều cao */
+  overflow-y: auto; /* Cuộn bên trong nếu quá dài */
+}
+
+/* Custom scrollbar cho filter container */
+.filter-container::-webkit-scrollbar {
+  width: 6px;
+}
+.filter-container::-webkit-scrollbar-track {
+  background: transparent;
+}
+.filter-container::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
 }
 
 .filter-title {
