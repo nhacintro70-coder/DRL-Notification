@@ -304,8 +304,15 @@ async def fetch_posts_playwright(context, page_url: str, max_posts: int = 5) -> 
                 text_clean = re.sub(r"\s+", " ", item["text"]).strip()
                 if text_clean not in seen_texts:
                     seen_texts.add(text_clean)
-                    post_id = text_clean[:300]
+                    # Cải tiến ID: Dùng link làm ID nếu có link cụ thể, ngược lại dùng text tĩnh
                     link = item["link"] or page_url
+                    
+                    if "/posts/" in link or "fbid=" in link or "/share/" in link or "/photo" in link or "/video" in link:
+                        post_id = link.split("?")[0] if "/posts/" in link else link
+                    else:
+                        # Nếu không có link, dùng đoạn văn bản ở giữa để tránh dính số lượt like/comment thay đổi ở đầu/cuối
+                        post_id = text_clean[30:250] if len(text_clean) > 50 else text_clean
+
                     all_posts.append({"id": post_id, "text": text_clean, "link": link})
             
             # Đã đủ bài thì thoát vòng lặp cuộn

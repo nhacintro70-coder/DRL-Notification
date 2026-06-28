@@ -18,7 +18,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 15  # tự kill nếu treo quá 15 phút, tránh chiếm slot
+    timeout-minutes: 45  # tự kill nếu treo quá 45 phút, tránh chiếm slot
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
