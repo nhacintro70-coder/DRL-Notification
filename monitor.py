@@ -391,18 +391,15 @@ async def main():
         try:
             try:
                 # Hỗ trợ playwright-stealth v1
-                from playwright_stealth import stealth_sync
-                def apply_stealth(ctx):
-                    stealth_sync(ctx)
+                from playwright_stealth import stealth_async
+                await stealth_async(context)
             except ImportError:
                 # Hỗ trợ playwright-stealth v2+
                 from playwright_stealth import Stealth
-                def apply_stealth(ctx):
-                    Stealth().apply_stealth_sync(ctx)
-            apply_stealth(context)
-            print("[INFO] Đã áp dụng playwright-stealth.")
+                await Stealth().apply_stealth_async(context)
+            print("[INFO] Đã áp dụng playwright-stealth.", flush=True)
         except Exception as e:
-            print(f"[CẢNH BÁO] Không tải được playwright-stealth: {e}")
+            print(f"[CẢNH BÁO] Không tải được playwright-stealth: {e}", flush=True)
 
         # Nạp cookie
         cookies = parse_cookie_string(FB_COOKIE)
