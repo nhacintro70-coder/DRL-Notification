@@ -208,14 +208,14 @@ export function parsePostInfo(text) {
     pointCategory = `Mục ${directMatch[1]}`;
   } else {
     // Heuristic matching
-    if (/(cuộc thi|học thuật|nckh|khởi nghiệp|olympic|nghiên cứu khoa học)/i.test(text)) {
+    if (/(nghiên cứu khoa học|nckh|học thuật|khởi nghiệp|công nghệ|đổi mới sáng tạo)/i.test(text) || (/(hội thảo|workshop|cuộc thi)/i.test(text) && /(học thuật|công nghệ|khởi nghiệp|khoa học)/i.test(text))) {
       pointCategory = 'Mục 1';
-    } else if (/(tình nguyện|mùa hè xanh|hiến máu|ngoài ueh|ngoài trường|cộng đồng)/i.test(text)) {
+    } else if (/(tình nguyện|mùa hè xanh|xuân tình nguyện|hiến máu|cộng đồng|hoạt động xã hội|chiến dịch)/i.test(text)) {
       pointCategory = 'Mục 4';
-    } else if (/(talkshow|hội thảo|chia sẻ|minigame|share bài|văn nghệ|thể thao|giao lưu|workshop|tọa đàm)/i.test(text)) {
+    } else if (/(văn nghệ|âm nhạc|thể thao|hội thao|chính trị|xã hội|môi trường|đại học xanh|green campus|trách nhiệm xã hội|talkshow)/i.test(text) || (/(cuộc thi)/i.test(text) && /(nghệ thuật|thể thao|tiếng hát)/i.test(text))) {
       pointCategory = 'Mục 3';
     } else {
-      pointCategory = 'Mục 3'; // Mặc định các CLB/Đoàn Hội đăng bài thường rơi vào Mục 3
+      pointCategory = 'Chưa phân loại'; // Mặc định nếu không rõ
     }
   }
 
