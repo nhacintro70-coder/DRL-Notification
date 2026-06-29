@@ -2,7 +2,7 @@
 
 Theo dõi nhiều fanpage Facebook (đoàn, khoa, club), tự động phát hiện bài viết
 nào cho phép "cập nhật MSSV" / liên quan điểm rèn luyện, và báo ngay qua Telegram.
-Chạy hoàn toàn miễn phí bằng GitHub Actions, không cần server riêng.
+Hệ thống kết hợp giữa GitHub Actions và dịch vụ hẹn giờ ngoài để đảm bảo thông báo luôn tức thời (chạy đều đặn mỗi 15 phút).
 
 ## 1. Tạo Telegram Bot (5 phút)
 
@@ -16,8 +16,7 @@ Chạy hoàn toàn miễn phí bằng GitHub Actions, không cần server riêng
 
 ## 2. Đưa code lên GitHub
 
-1. Tạo 1 repo GitHub mới (để **public** thì GitHub Actions chạy free không giới hạn phút;
-   để private vẫn free nhưng có giới hạn ~2000 phút/tháng — với lịch 20 phút/lần vẫn thoải mái).
+1. Tạo 1 repo GitHub mới.
 2. Đẩy toàn bộ các file trong thư mục này lên repo đó.
 
 ## 3. Khai báo Secrets
@@ -26,56 +25,52 @@ Vào repo trên GitHub → **Settings → Secrets and variables → Actions → 
 
 - `TELEGRAM_BOT_TOKEN` — token lấy ở bước 1
 - `TELEGRAM_CHAT_ID` — chat_id lấy ở bước 1
-- `FB_COOKIE` — (tùy chọn, để trống trước) xem mục 5 nếu cần
+- `FB_COOKIE` — (bắt buộc) Cookie đăng nhập Facebook để Playwright có thể cào dữ liệu mà không bị chặn màn hình đăng nhập. Lấy bằng extension "Cookie-Editor" dưới dạng chuỗi `key=value; key2=value2...`.
 
 ## 4. Khai báo danh sách fanpage cần theo dõi
 
-Sửa file `pages_config.json`, thay các url mẫu bằng url thật dạng:
+Sửa file `pages_config.json`, định dạng url chuẩn hiện tại là link trang gốc Facebook:
 
+```json
+{
+  "name": "Tên Fanpage",
+  "url": "https://www.facebook.com/<username_hoặc_id_page>"
+}
 ```
-https://mbasic.facebook.com/<username_hoặc_id_page>
-```
+Có thể thêm bao nhiêu page tùy ý và chỉnh sửa từ khóa linh hoạt trong mục `keywords`.
 
-Có thể thêm bao nhiêu page tùy ý. Cũng có thể chỉnh sửa/thêm từ khóa trong mảng `keywords`.
+## 5. Bật tự động chạy siêu tốc bằng cron-job.org (Bắt buộc để ổn định)
 
-## 5. Bật workflow
+Do hệ thống hẹn giờ của GitHub Actions thường xuyên bị trễ (delay) hàng tiếng đồng hồ đối với các tài khoản miễn phí, bắt buộc phải dùng hệ thống API để "đánh thức" GitHub mỗi 15 phút.
 
-Vào tab **Actions** trên GitHub, bật workflow nếu nó đang bị tắt. Workflow sẽ tự chạy
-mỗi 20 phút (chỉnh trong `.github/workflows/monitor.yml` nếu muốn nhanh/chậm hơn).
-Có thể bấm **Run workflow** để test ngay không cần chờ.
+**Bước 5.1: Tạo Fine-grained Token trên GitHub**
+1. Vào GitHub > Settings > Developer settings > Personal access tokens > Fine-grained tokens > Generate new token.
+2. Tên tự chọn, chọn `Only select repositories` -> Chọn repo hiện tại.
+3. Trong `Repository permissions`, mục `Actions` đổi thành `Read and write`.
+4. Bấm Generate và **Copy chuỗi Token sinh ra**.
 
-### Nếu Facebook chặn xem ẩn danh (yêu cầu đăng nhập)
-
-mbasic.facebook.com đôi khi vẫn cho xem bài viết public mà không cần đăng nhập, nhưng
-Facebook có thể thay đổi việc này bất cứ lúc nào. Nếu log báo "có vẻ đang yêu cầu đăng nhập",
-bạn có thể:
-
-1. Đăng nhập Facebook bằng tài khoản cá nhân trên trình duyệt.
-2. Dùng extension như "Cookie-Editor" để export cookie của domain facebook.com dưới dạng chuỗi `key=value; key2=value2...`.
-3. Dán chuỗi đó vào secret `FB_COOKIE`.
-
-**Lưu ý:** việc này khiến request tự động mang theo phiên đăng nhập thật của bạn, nằm ngoài
-cách dùng Facebook cho phép trong Điều khoản dịch vụ (Facebook không cho phép thu thập dữ liệu
-tự động kể cả nội dung public). Rủi ro thực tế thường thấp nếu bạn chỉ đọc (không tương tác,
-không spam) và để tần suất vừa phải (15–30 phút/lần), nhưng vẫn có khả năng tài khoản bị
-Facebook gắn cờ. Cân nhắc dùng 1 tài khoản phụ thay vì tài khoản chính nếu lo ngại.
-
-## 6. Mở rộng sau này: làm website hiển thị
-
-File `matched_posts.json` (tự sinh sau mỗi lần chạy, lưu tối đa 200 bài khớp gần nhất)
-chính là dữ liệu sẵn sàng để dựng 1 trang web tĩnh (ví dụ deploy free bằng **GitHub Pages**)
-đọc file này và hiển thị thành danh sách. Khi bạn sẵn sàng làm phần này, quay lại nhờ
-Claude dựng tiếp — chỉ cần 1 trang HTML/React đọc `matched_posts.json` là xong, không cần
-thêm phí gì.
+**Bước 5.2: Lắp vào cron-job.org**
+1. Đăng ký trang [cron-job.org](https://cron-job.org).
+2. Tạo job mới (Create Cronjob), URL: `https://api.github.com/repos/<TÊN_GITHUB_CỦA_BẠN>/<TÊN_REPO>/actions/workflows/monitor.yml/dispatches`
+3. Lịch chạy (Execution schedule): `Every 15 minutes`
+4. Phần Advanced (Nâng cao):
+   - Method: `POST`
+   - Bấm `Add Content-Type Header Now`
+   - Headers thêm 3 dòng (Add header):
+     - `Accept: application/vnd.github+json`
+     - `Authorization: Bearer <Điền_Token_Bảo_Mật_Vừa_Copy_Vào_Đây>`
+     - `X-GitHub-Api-Version: 2022-11-28`
+   - Body tick chọn và điền: `{"ref":"main"}`
+5. Bấm Create/Save. Hệ thống sẽ chính thức chạy!
 
 ## Cấu trúc thư mục
 
 ```
 diem-ren-luyen-bot/
-├── monitor.py                  # script chính: scrape + lọc + gửi Telegram
-├── pages_config.json           # danh sách fanpage + từ khóa cần lọc
-├── requirements.txt
-├── seen_posts.json             # tự sinh, lưu các bài đã thấy (tránh báo trùng)
-├── matched_posts.json          # tự sinh, lưu các bài đã khớp từ khóa (cho web sau này)
-└── .github/workflows/monitor.yml
+├── monitor.py                  # script chính: giả lập Playwright cào bài, lọc từ khóa, gửi Telegram
+├── pages_config.json           # danh sách fanpage + cấu hình từ khóa
+├── requirements.txt            # Thư viện Python
+├── seen_posts.json             # File tự sinh: Lưu log các bài viết cũ (tránh spam)
+└── .github/workflows/
+    └── monitor.yml             # Cấu hình GitHub Actions
 ```

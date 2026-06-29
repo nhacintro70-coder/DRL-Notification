@@ -14,83 +14,143 @@ function parsePostInfo(text) {
   const sectionKeywords = [
     'địa điểm', 'đối tượng', 'thể lệ', 'link', 'lưu ý', 'chú ý', 
     'quyền lợi', 'yêu cầu', 'cách thức', 'thông tin chi tiết', 
-    'thời gian', 'hạn chót', 'deadline', 'thông tin liên hệ', 'liên hệ'
+    'thời gian', 'hạn chót', 'deadline', 'thông tin liên hệ', 'liên hệ', 'diễn giả', 'khách mời', 'host'
   ];
 
   // Hàm hỗ trợ cắt nội dung của một mục
-  const extractSection = (keywords) => {
-    let bestIdx = -1;
-    let foundKw = '';
+  const extractSection = (keywords, includeKeyword = false, validationRegex = null) => {
+    // Tìm tất cả các vị trí xuất hiện của các từ khóa
+    let occurrences = [];
     for (let kw of keywords) {
-      const idx = lowerText.indexOf(kw);
-      if (idx !== -1 && (bestIdx === -1 || idx < bestIdx)) {
-        bestIdx = idx;
-        foundKw = kw;
+      let startIndex = 0;
+      let idx;
+      while ((idx = lowerText.indexOf(kw, startIndex)) > -1) {
+        occurrences.push({ index: idx, kw: kw });
+        startIndex = idx + kw.length;
       }
     }
     
-    if (bestIdx === -1) return '';
+    // Sắp xếp theo vị trí xuất hiện từ trên xuống dưới
+    occurrences.sort((a, b) => a.index - b.index);
     
-    // Lấy chuỗi sau từ khóa
-    let subStr = text.substring(bestIdx + foundKw.length).replace(/^[:\s\-]+/, '');
-    
-    let endIdx = subStr.length;
-    let nextSectionIdx = -1;
-    const lowerSubStr = subStr.toLowerCase();
-    
-    // Tìm từ khóa của mục tiếp theo để cắt
-    for (let kw of sectionKeywords) {
-      if (keywords.includes(kw)) continue; 
+    for (let occ of occurrences) {
+      const bestIdx = occ.index;
+      const foundKw = occ.kw;
       
-      const idx = lowerSubStr.indexOf(kw);
-      if (idx !== -1) {
-          const beforeKw = lowerSubStr.substring(Math.max(0, idx - 5), idx);
-          // Chỉ cắt nếu từ khóa mục tiếp theo nằm ở đầu dòng hoặc sau dấu chấm
-          if (beforeKw.includes('\n') || beforeKw.includes('.') || nextSectionIdx === -1) {
-              if (nextSectionIdx === -1 || idx < nextSectionIdx) {
-                  nextSectionIdx = idx;
-              }
-          }
+      // Lấy chuỗi
+      let startIdx = includeKeyword ? bestIdx : (bestIdx + foundKw.length);
+      let subStr = text.substring(startIdx);
+      if (!includeKeyword) subStr = subStr.replace(/^[:\s\-]+/, '');
+      
+      let endIdx = subStr.length;
+      let nextSectionIdx = -1;
+      const lowerSubStr = subStr.toLowerCase();
+      
+      // Tìm từ khóa của mục tiếp theo để cắt
+      for (let kw of sectionKeywords) {
+        if (keywords.includes(kw)) continue; 
+        
+        const idx = lowerSubStr.indexOf(kw);
+        if (idx !== -1 && (!includeKeyword || idx > foundKw.length)) {
+            const beforeKw = lowerSubStr.substring(Math.max(0, idx - 5), idx);
+            // Chỉ cắt nếu từ khóa mục tiếp theo nằm ở đầu dòng hoặc sau dấu chấm/phẩy/gạch
+            if (/[\n\.\,\-\|]/.test(beforeKw) || nextSectionIdx === -1) {
+                if (nextSectionIdx === -1 || idx < nextSectionIdx) {
+                    nextSectionIdx = idx;
+                }
+            }
+        }
+      }
+      
+      if (nextSectionIdx !== -1) {
+        endIdx = nextSectionIdx;
+      } else {
+        // Nếu không có từ khóa tiếp theo, cắt ở dấu xuống dòng nếu đã lấy đủ dài
+        const minLength = includeKeyword ? (foundKw.length + 10) : 10;
+        const newlineIdx = subStr.indexOf('\n', includeKeyword ? foundKw.length : 0);
+        if (newlineIdx !== -1 && newlineIdx > minLength) {
+          endIdx = newlineIdx;
+        }
+      }
+      
+      let result = subStr.substring(0, endIdx).trim();
+      // Xóa những dòng phân cách thừa (---, ===, ___)
+      const sepMatch = result.match(/[-=_]{3,}/);
+      if (sepMatch) {
+         result = result.substring(0, sepMatch.index).trim();
+      }
+      
+      // Nếu có regex kiểm chứng, đoạn cắt được PHẢI thỏa mãn regex, nếu không sẽ bỏ qua và tìm tiếp
+      if (validationRegex) {
+        if (validationRegex.test(result)) {
+           return result;
+        }
+      } else {
+        return result;
       }
     }
     
-    if (nextSectionIdx !== -1) {
-      endIdx = nextSectionIdx;
-    } else {
-      // Nếu không có từ khóa tiếp theo, cắt ở dấu xuống dòng nếu đã lấy đủ dài
-      const newlineIdx = subStr.indexOf('\n');
-      if (newlineIdx !== -1 && newlineIdx > 10) {
-        endIdx = newlineIdx;
-      }
-    }
-    
-    return subStr.substring(0, endIdx).trim();
+    return '';
   };
 
-  // 1. TÌM THỜI GIAN
-  time = extractSection(['thời gian', 'thời hạn', 'deadline', 'hạn chót', 'timeline']);
+  // 1. TÌM THỜI GIAN ĐĂNG KÝ / HẠN CHÓT
+  // Bắt buộc đoạn lấy được phải có chứa ngày tháng hoặc giờ NẰM TRONG 120 KÝ TỰ ĐẦU TIÊN
+  const hasTimeRegex = /^[\s\S]{0,120}(?:\d{1,2}h\d{0,2}|\d{1,2}:\d{2}|\d{1,2}[\/\-]\d{1,2}|ngày\s*\d{1,2})/i;
+  time = extractSection(['thời gian đăng ký', 'hạn đăng ký', 'hạn chót', 'deadline', 'thời hạn đăng ký', 'đăng ký:', 'đăng ký từ', 'đóng form'], true, hasTimeRegex);
   
   if (time) {
-    // Tinh chỉnh Thời gian bằng Regex để lấy đúng ngày/giờ, loại bỏ câu chữ rườm rà
-    const timeRegex = /((?:\d{1,2}h\d{0,2}|\d{1,2}:\d{2})|(?:\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)|(?:ngày\s*\d{1,2})|(?:tháng\s*\d{1,2})|(?:năm\s*\d{2,4})|(?:thứ\s*\d)|(?:chủ nhật))/gi;
-    const matches = time.match(timeRegex);
-    if (matches && matches.length > 0) {
-      const firstMatchIdx = time.indexOf(matches[0]);
-      const lastMatch = matches[matches.length - 1];
-      const lastMatchIdx = time.lastIndexOf(lastMatch) + lastMatch.length;
-      time = time.substring(firstMatchIdx, lastMatchIdx);
+    const extractTimeRegex = /((?:\d{1,2}h\d{0,2}|\d{1,2}:\d{2})|(?:\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)|(?:ngày\s*\d{1,2})|(?:tháng\s*\d{1,2})|(?:năm\s*\d{2,4})|(?:thứ\s*\w+)|(?:chủ nhật))/gi;
+    let matches = [];
+    let match;
+    while ((match = extractTimeRegex.exec(time)) !== null) {
+      matches.push({ text: match[0], index: match.index });
+    }
+    
+    if (matches.length > 0) {
+      let lastMatch = matches[matches.length - 1];
+      let endOfTime = lastMatch.index + lastMatch.text.length;
+      
+      // Bắt thêm thứ trong ngoặc nếu có (ví dụ: (Thứ Ba))
+      let afterText = time.substring(endOfTime);
+      let thuMatch = afterText.match(/^\s*[\(\,\-]?\s*(thứ\s*\w+|chủ nhật)\s*\)?/i);
+      if (thuMatch) {
+        endOfTime += thuMatch[0].length;
+      }
+      
+      time = time.substring(0, endOfTime).trim();
+      // Loại bỏ các ký tự dấu thừa ở cuối (như phẩy, chấm, gạch ngang)
+      time = time.replace(/[\,\.\-\_]*$/, '').trim();
+    } else {
+      time = '';
     }
   }
 
-  // 2. TÌM ĐỊA ĐIỂM
-  location = extractSection(['địa điểm', 'hình thức', 'nền tảng']);
+  // 2. TÌM ĐỊA ĐIỂM (Bao gồm cả lời dẫn)
+  location = extractSection(['địa điểm', 'hình thức:', 'hình thức hoạt động', 'hình thức tổ chức', 'nền tảng:'], true);
   if (location) {
     const locLower = location.toLowerCase();
-    if (locLower.includes("online") || locLower.includes("zoom") || locLower.includes("microsoft teams") || locLower.includes("meet")) {
-      location = "Online";
+    
+    // Bộ lọc kiểm chứng: Phải chứa các từ khóa liên quan đến địa danh hoặc online
+    const validLocRegex = /\b(trường|cơ sở|cs|phòng|hội trường|sảnh|đường|quận|phường|xã|ueh|online|zoom|teams|meet|google|trực tuyến|địa chỉ|sân|nhà|tp|hcm|microsoft)\b/i;
+    const isValidLoc = validLocRegex.test(locLower);
+    
+    // Nếu quá dài (> 200 ký tự) mà không bị cắt, có thể là bắt nhầm đoạn văn bản
+    if (!isValidLoc || location.length > 200) {
+      location = '';
+    } else if (locLower.includes("online") || locLower.includes("zoom") || locLower.includes("teams") || locLower.includes("meet") || locLower.includes("trực tuyến")) {
+      // Giữ nguyên câu, nhưng nếu dài quá thì cắt tới dấu chấm/phẩy gần nhất (sau chữ online/nền tảng)
+      const dotIdx = location.search(/[\.\,]/);
+      if (dotIdx !== -1 && dotIdx > 15) location = location.substring(0, dotIdx).trim();
+      
+      location = location.charAt(0).toUpperCase() + location.slice(1);
     } else {
       // Xóa dấu cộng/trừ đầu dòng
       location = location.replace(/^[\+\-\*]\s*/g, '').trim();
+    }
+    
+    // Xóa các ký tự thừa ở cuối
+    if (location) {
+      location = location.replace(/[\,\.\-\_]*$/, '').trim();
     }
   }
 
@@ -131,8 +191,11 @@ function parsePostInfo(text) {
 
   // Rút gọn nếu quá dài
   if (eventName.length > 120) eventName = eventName.substring(0, 120) + '...';
+  // Xóa các ký tự gạch ngang/bằng thừa ở cuối tiêu đề
+  eventName = eventName.replace(/[\-\=_]+$/, '').trim();
+  
   if (time.length > 80) time = time.substring(0, 80) + '...';
-  if (location.length > 80) location = location.substring(0, 80) + '...';
+  if (location.length > 100) location = location.substring(0, 100) + '...';
 
   // Viết hoa chữ cái đầu
   if (location) location = location.charAt(0).toUpperCase() + location.slice(1);
@@ -140,8 +203,8 @@ function parsePostInfo(text) {
 
   return { 
     eventName: eventName || 'Thông báo hoạt động / Sự kiện mới', 
-    time: time || 'Chưa xác định (Xem chi tiết trong bài)', 
-    location: location || 'Chưa xác định (Xem chi tiết trong bài)' 
+    time: time || '(Xem chi tiết trong bài)', 
+    location: location || '(Xem chi tiết trong bài)' 
   }
 }
 
@@ -185,18 +248,22 @@ function PostCard({ post, index }) {
           </div>
           <div className="info-content">
             <span className="info-label">Thời gian & Hạn chót</span>
-            <span className="info-value">{time}</span>
+            <span className="info-value text-glow">
+              {time || '(Xem chi tiết trong bài)'}
+            </span>
           </div>
         </div>
 
         {/* Địa điểm / Hình thức */}
         <div className="info-item">
           <div className="info-icon-wrapper location-icon">
-            <MapPin size={18} />
+            <MapPin size={20} />
           </div>
           <div className="info-content">
             <span className="info-label">Hình thức hoạt động</span>
-            <span className="info-value">{location}</span>
+            <span className="info-value">
+              {location || '(Xem chi tiết trong bài)'}
+            </span>
           </div>
         </div>
       </div>
