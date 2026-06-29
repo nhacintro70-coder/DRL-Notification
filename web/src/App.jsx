@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react'
 import { GraduationCap, Filter, ChevronDown, X } from 'lucide-react'
-import PostCard from './PostCard'
+import PostCard, { parsePostInfo } from './PostCard'
 import postsData from './matched_posts.json'
 
 const CATEGORIES = [
@@ -35,7 +35,8 @@ const CATEGORIES = [
       "CLB Bất động sản REC",
       "Câu lạc bộ Công nghệ Kinh tế - ET Club",
       "CLB PHÁP LÝ",
-      "HuReA Club"
+      "HuReA Club",
+      "ASC - Actuarial Science Club (CLB Phân tích rủi ro và Định phí bảo hiểm)"
     ]
   },
   {
@@ -70,7 +71,10 @@ const CATEGORIES = [
 function App() {
   const [activeTab, setActiveTab] = useState('Tất cả')
   const [activeClubs, setActiveClubs] = useState([]) // Chuyển thành Array để Multi-select
+  const [activePointCategory, setActivePointCategory] = useState('Tất cả Mục')
   const [isPanelOpen, setIsPanelOpen] = useState(false)
+  
+  const POINT_CATEGORIES = ['Tất cả Mục', 'Mục 1', 'Mục 3', 'Mục 4', 'Chưa phân loại'];
   
   const panelRef = useRef(null)
 
@@ -87,7 +91,12 @@ function App() {
     }
   }, [])
 
-  const posts = Array.isArray(postsData) ? postsData : []
+  const processedPosts = useMemo(() => {
+    return (Array.isArray(postsData) ? postsData : []).map(post => {
+      const parsed = parsePostInfo(post.text);
+      return { ...post, pointCategory: parsed.pointCategory };
+    });
+  }, []);
 
   // Logic đổi tab
   const handleSelectTab = (tabName) => {
@@ -115,16 +124,26 @@ function App() {
 
   // Lọc dữ liệu kết quả cuối cùng
   const filteredPosts = useMemo(() => {
-    if (activeTab === 'Tất cả') {
-      return posts
+    let result = processedPosts;
+
+    // 1. Lọc theo Mục ĐRL
+    if (activePointCategory !== 'Tất cả Mục') {
+      result = result.filter(post => post.pointCategory === activePointCategory);
     }
-    if (activeClubs.length > 0) {
-      // Đã chọn một HOẶC nhiều CLB cụ thể trong nhóm
-      return posts.filter(post => activeClubs.includes(post.page))
+
+    // 2. Lọc theo Đơn vị tổ chức
+    if (activeTab !== 'Tất cả') {
+      if (activeClubs.length > 0) {
+        // Đã chọn một HOẶC nhiều CLB cụ thể trong nhóm
+        result = result.filter(post => activeClubs.includes(post.page))
+      } else {
+        // Đã chọn một nhóm nhưng chưa chọn CLB cụ thể -> Hiện toàn bộ bài trong nhóm đó
+        result = result.filter(post => currentCategoryObj?.pages.includes(post.page))
+      }
     }
-    // Đã chọn một nhóm nhưng chưa chọn CLB cụ thể -> Hiện toàn bộ bài trong nhóm đó
-    return posts.filter(post => currentCategoryObj?.pages.includes(post.page))
-  }, [posts, activeTab, activeClubs, currentCategoryObj])
+    
+    return result;
+  }, [processedPosts, activeTab, activeClubs, currentCategoryObj, activePointCategory])
 
 
   return (
@@ -139,17 +158,38 @@ function App() {
         {/* Khu vực Filter 2 Tầng (Spec v2) */}
         <div className="filter-system">
           
+          {/* Lọc theo Mục ĐRL */}
+          <div className="point-category-filter">
+            <span className="filter-label">Mục ĐRL:</span>
+            <div className="point-chips">
+              {POINT_CATEGORIES.map(cat => {
+                const count = cat === 'Tất cả Mục' 
+                    ? processedPosts.length 
+                    : processedPosts.filter(p => p.pointCategory === cat).length;
+                return (
+                  <button
+                    key={cat}
+                    className={`point-chip ${activePointCategory === cat ? 'active' : ''}`}
+                    onClick={() => setActivePointCategory(cat)}
+                  >
+                    {cat} <span className="count">({count})</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Tầng 1: Tab Chips */}
           <div className="tab-chips-wrap">
             <button 
               className={`tab-chip ${activeTab === 'Tất cả' ? 'active' : ''}`}
               onClick={() => handleSelectTab('Tất cả')}
             >
-              Tất cả <span>({posts.length})</span>
+              Tất cả Đơn vị
             </button>
             {CATEGORIES.map((cat, idx) => {
               // Tính số bài viết của nhóm này
-              const catPostCount = posts.filter(p => cat.pages.includes(p.page)).length;
+              const catPostCount = processedPosts.filter(p => cat.pages.includes(p.page)).length;
               return (
                 <button 
                   key={idx}
@@ -182,11 +222,11 @@ function App() {
                         className={`panel-chip ${activeClubs.length === 0 ? 'active' : ''}`}
                         onClick={() => handleSelectClub(null)}
                       >
-                        Tất cả trong nhóm <span>({posts.filter(p => currentCategoryObj.pages.includes(p.page)).length})</span>
+                        Tất cả trong nhóm <span>({processedPosts.filter(p => currentCategoryObj.pages.includes(p.page)).length})</span>
                       </button>
                       
                       {currentCategoryObj.pages.map((page, idx) => {
-                        const postCount = posts.filter(p => p.page === page).length;
+                        const postCount = processedPosts.filter(p => p.page === page).length;
                         const isSelected = activeClubs.includes(page);
                         return (
                           <button

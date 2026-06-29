@@ -76,6 +76,64 @@ body {
   gap: 1.25rem;
 }
 
+/* Tầng 0 - Lọc theo Mục ĐRL */
+.point-category-filter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed rgba(255,255,255,0.1);
+  margin-bottom: 4px;
+}
+
+.filter-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.point-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.point-chip {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  padding: 6px 14px;
+  color: rgba(255,255,255,0.7);
+  font-size: 13.5px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.point-chip:hover {
+  background: rgba(255,255,255,0.1);
+  color: #fff;
+}
+
+.point-chip.active {
+  background: rgba(168, 85, 247, 0.15);
+  border-color: #a855f7;
+  color: #e9d5ff;
+  font-weight: 600;
+  box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+}
+
+.point-chip .count {
+  opacity: 0.6;
+  font-size: 0.85em;
+  font-weight: 400;
+  margin-left: 4px;
+}
+
 /* Tầng 1 - Tab Chips Wrap */
 .tab-chips-wrap {
   display: flex;
@@ -332,11 +390,49 @@ body {
 }
 
 /* Structured Fields */
+.title-area {
+  margin-bottom: 1.5rem;
+}
+
+.point-category-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.cat-badge-m1 {
+  background: rgba(59, 130, 246, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.cat-badge-m3 {
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.cat-badge-m4 {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.cat-badge-default {
+  background: rgba(148, 163, 184, 0.15);
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
 .event-title {
   font-size: 1.15rem;
   font-weight: 700;
   color: #fff;
-  margin-bottom: 1.5rem;
   line-height: 1.4;
   display: flex;
   align-items: flex-start;

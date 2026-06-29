@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react'
 import { Facebook, ExternalLink, ChevronDown, ChevronUp, Calendar, MapPin, Building2, Bookmark, Clock } from 'lucide-react'
 
-function parsePostInfo(text) {
+export function parsePostInfo(text) {
   const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0)
   
   let eventName = ''
@@ -201,10 +201,29 @@ function parsePostInfo(text) {
   if (location) location = location.charAt(0).toUpperCase() + location.slice(1);
   if (time) time = time.charAt(0).toUpperCase() + time.slice(1);
 
+  // 4. TÌM MỤC ĐIỂM RÈN LUYỆN
+  let pointCategory = 'Chưa phân loại';
+  const directMatch = /(?:mục|tiêu chí)[\s:]*([1-6])/i.exec(text);
+  if (directMatch) {
+    pointCategory = `Mục ${directMatch[1]}`;
+  } else {
+    // Heuristic matching
+    if (/(cuộc thi|học thuật|nckh|khởi nghiệp|olympic|nghiên cứu khoa học)/i.test(text)) {
+      pointCategory = 'Mục 1';
+    } else if (/(tình nguyện|mùa hè xanh|hiến máu|ngoài ueh|ngoài trường|cộng đồng)/i.test(text)) {
+      pointCategory = 'Mục 4';
+    } else if (/(talkshow|hội thảo|chia sẻ|minigame|share bài|văn nghệ|thể thao|giao lưu|workshop|tọa đàm)/i.test(text)) {
+      pointCategory = 'Mục 3';
+    } else {
+      pointCategory = 'Mục 3'; // Mặc định các CLB/Đoàn Hội đăng bài thường rơi vào Mục 3
+    }
+  }
+
   return { 
     eventName: eventName || 'Thông báo hoạt động / Sự kiện mới', 
     time: time || '(Xem chi tiết trong bài)', 
-    location: location || '(Xem chi tiết trong bài)' 
+    location: location || '(Xem chi tiết trong bài)',
+    pointCategory
   }
 }
 
@@ -215,7 +234,16 @@ function PostCard({ post, index }) {
   const toggleExpand = () => setIsExpanded(!isExpanded)
 
   // Trích xuất dữ liệu
-  const { eventName, time, location } = useMemo(() => parsePostInfo(post.text), [post.text])
+  const { eventName, time, location, pointCategory } = useMemo(() => parsePostInfo(post.text), [post.text])
+  
+  const getCategoryClass = (cat) => {
+    switch(cat) {
+      case 'Mục 1': return 'cat-badge-m1';
+      case 'Mục 3': return 'cat-badge-m3';
+      case 'Mục 4': return 'cat-badge-m4';
+      default: return 'cat-badge-default';
+    }
+  }
   
   const isLongText = post.text && post.text.length > 250
 
@@ -224,10 +252,13 @@ function PostCard({ post, index }) {
       <div className="card-top-accent"></div>
       
       {/* Tên chương trình */}
-      <h2 className="event-title">
-        <Bookmark className="title-icon" size={22} />
-        {eventName}
-      </h2>
+      <div className="title-area">
+        <span className={`point-category-badge ${getCategoryClass(pointCategory)}`}>{pointCategory}</span>
+        <h2 className="event-title">
+          <Bookmark className="title-icon" size={22} />
+          {eventName}
+        </h2>
+      </div>
 
       <div className="info-list">
         {/* Đơn vị tổ chức */}
